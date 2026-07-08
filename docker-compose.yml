@@ -1,0 +1,89 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: s4p-frontend:local
+    ports:
+      - "${FRONTEND_PORT:-4173}:80"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - s4p
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: s4p-backend:local
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-s4p}
+      DB_USER: ${POSTGRES_USER:-s4p_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-s4p_password}
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3001/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - s4p
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-s4p}
+      POSTGRES_USER: ${POSTGRES_USER:-s4p_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-s4p_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-s4p_user} -d ${POSTGRES_DB:-s4p}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - s4p
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: s4p-nginx:local
+    ports:
+      - "${NGINX_PORT:-8080}:80"
+    depends_on:
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_started
+    networks:
+      - s4p
+
+volumes:
+  postgres_data:
+
+networks:
+  s4p:
+    driver: bridge
