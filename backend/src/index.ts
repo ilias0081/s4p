@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 import { createServer } from 'node:http';
 
 import { createApp } from './app.js';

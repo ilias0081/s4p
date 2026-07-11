@@ -48,16 +48,17 @@ The frontend uses relative `/api` calls, so the app works both on the direct fro
 
 This repo is intended to be run through Docker from WSL so local Node/npm installs are not required.
 
-1. Copy `.env.example` to `.env`
-2. From your WSL shell in the repo root, run `docker compose up --build`
-3. Open one of these URLs:
+1. Create a root `.env` file by copying `.env.example` in the repo root.
+2. Fill in all required values in the root `.env`. Docker Compose now treats these variables as required and will error if they are missing.
+3. From your WSL shell in the repo root, run `docker compose up --build`
+4. Open one of these URLs:
 	- Frontend only: `http://localhost:4173`
 	- Backend health: `http://localhost:3001/api/health`
 	- Gateway nginx: `http://localhost:8080`
 
 ## Environment
 
-The main environment variables are:
+The root `.env` must define these variables:
 
 - `POSTGRES_DB`
 - `POSTGRES_USER`
@@ -66,6 +67,19 @@ The main environment variables are:
 - `BACKEND_PORT`
 - `FRONTEND_PORT`
 - `NGINX_PORT`
+
+Example:
+
+```env
+COMPOSE_PROJECT_NAME=s4p
+POSTGRES_DB=s4p
+POSTGRES_USER=your_postgres_user
+POSTGRES_PASSWORD=your_postgres_password
+POSTGRES_PORT=5432
+BACKEND_PORT=3001
+FRONTEND_PORT=4173
+NGINX_PORT=8080
+```
 
 ## Notes
 
