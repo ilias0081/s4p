@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach: Backend (Docker dev :9229)",
+      "type": "pwa-node",
+      "request": "attach",
+      "address": "localhost",
+      "port": 9229,
+      "restart": true,
+      "localRoot": "${workspaceFolder}/backend",
+      "remoteRoot": "/app",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}

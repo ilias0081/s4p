@@ -1,6 +1,6 @@
 # s4p
 
-s4p is a basic AI workflow automation platform.
+s4p (Step) is a basic AI workflow automation platform.
 
 # Information
 
@@ -44,17 +44,60 @@ A Docker-first full-stack scaffold for a React frontend and a Node.js/Express ba
 
 The frontend uses relative `/api` calls, so the app works both on the direct frontend port and through the gateway nginx port.
 
-## Local Setup
+## Run Modes
 
-This repo is intended to be run through Docker from WSL so local Node/npm installs are not required.
+This repo supports two distinct workflows.
 
-1. Create a root `.env` file by copying `.env.example` in the repo root.
-2. Fill in all required values in the root `.env`. Docker Compose now treats these variables as required and will error if they are missing.
-3. From your WSL shell in the repo root, run `docker compose up --build`
-4. Open one of these URLs:
-	- Frontend only: `http://localhost:4173`
-	- Backend health: `http://localhost:3001/api/health`
-	- Gateway nginx: `http://localhost:8080`
+### Full Production-Style Stack
+
+Use this when you want the full Docker-first setup that mirrors deployment behavior.
+
+Command:
+
+`docker compose up --build`
+
+Open one of these URLs:
+
+- Frontend container: `http://localhost:4173`
+- Backend health: `http://localhost:3001/api/health`
+- Gateway nginx: `http://localhost:8080`
+
+<!-- ## Frontend Local Dev Mode
+
+For fast frontend iteration, run Vite locally while keeping backend/nginx API behavior equivalent:
+
+1. Start backend and database with Docker from repo root:
+
+   `docker compose up --build backend postgres`
+
+2. In `frontend/`, run `npm install` once.
+3. In `frontend/`, run `npm run dev`.
+4. Open `http://localhost:4173`.
+
+Notes:
+
+- Frontend API calls should stay relative (for example `/api/health`) so request code is identical in local dev and Docker production mode.
+- `vite.config.ts` now proxies `/api/*` to `http://localhost:3001` by default.
+- You can override the proxy target with `VITE_API_PROXY_TARGET` if needed. -->
+
+## Docker Dev Override
+
+Use the dev override when you want the frontend to run Vite inside Docker and the backend to expose a Node debugger port without changing the production compose file.
+
+Command:
+
+`docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build frontend backend postgres`
+
+Then:
+
+1. Open the frontend at `http://localhost:4173`.
+2. Attach a debugger to backend port `9229` when needed.
+
+Notes:
+
+- The dev override intentionally keeps `nginx` out of the default dev run so it does not proxy to the production-style frontend container setup.
+- Backend debug port exposure is dev-only because it lives in `docker-compose.dev.yml`, not the base compose file.
+- This backend override exposes the debugger for the compiled backend process; backend TypeScript watch/reload is a separate next step.
 
 ## Environment
 
@@ -85,4 +128,4 @@ NGINX_PORT=8080
 
 - Postgres is intentionally exposed locally so desktop GUI clients can connect during development.
 - The scaffold is production-oriented: containers build the app artifacts and run compiled output rather than relying on host-side dev servers.
-- If you later want a hot-reload workflow, add a separate development compose override rather than changing the main production-style stack.
+- If you later want backend hot reload, add a separate backend development runtime rather than changing the main production-style stack.

@@ -2,11 +2,11 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 COPY tsconfig.json ./
 COPY src ./src
 
-RUN npm install
+RUN npm ci
 RUN npm run build
 RUN npm prune --omit=dev
 
