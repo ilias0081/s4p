@@ -1,4 +1,8 @@
+import { useNavigate } from 'react-router-dom';
+
 function App() {
+  const navigate = useNavigate();
+
   return (
     <main className="min-h-screen overflow-x-hidden bg-background text-text">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_circle_at_10%_10%,rgba(13,0,255,0.35),transparent_40%),radial-gradient(700px_circle_at_85%_15%,rgba(119,0,255,0.3),transparent_38%),linear-gradient(140deg,#100320_0%,#140437_45%,#100320_100%)]" />
@@ -13,7 +17,10 @@ function App() {
             <a className="rounded-full px-3 py-1 transition hover:bg-white/10 hover:text-text" href="#how-it-works">
               How it Works
             </a>
-            <button className="rounded-full border border-primary/80 bg-primary px-4 py-1.5 font-medium text-text transition hover:brightness-110">
+            <button
+              className="rounded-full border border-primary/80 bg-primary px-4 py-1.5 font-medium text-text transition hover:brightness-110"
+              onClick={() => navigate('/auth')}
+            >
               Start Free
             </button>
           </div>
@@ -32,7 +39,10 @@ function App() {
               approvals, and triggers in minutes, then run at scale with guardrails.
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              <button className="rounded-2xl border border-primary/50 bg-primary px-6 py-3 font-semibold text-text transition hover:-translate-y-0.5 hover:brightness-110">
+              <button
+                className="rounded-2xl border border-primary/50 bg-primary px-6 py-3 font-semibold text-text transition hover:-translate-y-0.5 hover:brightness-110"
+                onClick={() => navigate('/auth')}
+              >
                 Build Your First Flow
               </button>
               <button className="rounded-2xl border border-white/20 bg-white/5 px-6 py-3 font-semibold text-text transition hover:bg-white/15">

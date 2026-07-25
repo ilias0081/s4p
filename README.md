@@ -97,7 +97,7 @@ Notes:
 
 - The dev override intentionally keeps `nginx` out of the default dev run so it does not proxy to the production-style frontend container setup.
 - Backend debug port exposure is dev-only because it lives in `docker-compose.dev.yml`, not the base compose file.
-- This backend override exposes the debugger for the compiled backend process; backend TypeScript watch/reload is a separate next step.
+- Backend runs `npm run dev` (`tsx watch`) in the dev override, so backend TypeScript changes are applied automatically on save.
 
 ## Environment
 
