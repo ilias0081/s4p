@@ -4,6 +4,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     image: s4p-frontend:local
+    pull_policy: build
     ports:
       - "${FRONTEND_PORT}:80"
     depends_on:
@@ -17,6 +18,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     image: s4p-backend:local
+    pull_policy: build
     environment:
       NODE_ENV: production
       PORT: 3001

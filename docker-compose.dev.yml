@@ -4,7 +4,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     image: s4p-frontend:dev
-    command: npm run dev
+    command: sh -c "npm ci && npm run dev"
     environment:
       CHOKIDAR_USEPOLLING: "true"
     volumes:
@@ -18,7 +18,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
     image: s4p-backend:dev
-    command: npm run dev
+    command: sh -c "npm ci && npm run dev"
     environment:
       NODE_OPTIONS: "--inspect=0.0.0.0:9229"
     volumes:
