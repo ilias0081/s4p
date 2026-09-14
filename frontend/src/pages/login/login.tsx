@@ -1,11 +1,75 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../lib/components/Button';
 import { Input } from '../../lib/components/Input';
+import { useLogin, useSignUp } from './auth';
 
 type Mode = 'login' | 'signup';
 
 export function AuthPage() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>('signup');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const signupMutation = useSignUp();
+  const loginMutation = useLogin();
+
+  const isSubmitting = signupMutation.isPending || loginMutation.isPending;
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+
+    if (mode === 'signup') {
+      if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
+        setError('Please complete all fields.');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setError('Passwords do not match.');
+        return;
+      }
+
+      signupMutation.mutate(
+        { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password },
+        {
+          onError: (submitError) => {
+            setError(submitError instanceof Error ? submitError.message : 'Unable to create account.');
+          },
+        }
+      );
+
+      return;
+    }
+
+    if (!email.trim() || !password) {
+      setError('Email and password are required.');
+      return;
+    }
+
+    loginMutation.mutate(
+      { email: email.trim(), password },
+      {
+        onSuccess: () => {
+          navigate('/dashboard');
+        },
+        onError: (submitError) => {
+          setError(submitError instanceof Error ? submitError.message : 'Invalid email or password.');
+        },
+      }
+    );
+  };
+
+  const resetMode = (nextMode: Mode) => {
+    setMode(nextMode);
+    setError('');
+  };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 text-text">
@@ -19,22 +83,44 @@ export function AuthPage() {
             : 'Sign in to continue to s4p.'}
         </p>
 
-        <form
-          className="mt-8 flex flex-col gap-4"
-          onSubmit={(e) => e.preventDefault()}
-        >
-          {mode === 'signup' ? ([
-            <Input label="First name" type="text" placeholder="Jane" autoComplete="name" />,
-            <Input label="Last name" type="text" placeholder="Smith" autoComplete="name" />,
-          ]) : null}
+        <form className="mt-8 flex flex-col gap-4" onSubmit={handleSubmit}>
+          {mode === 'signup' ? (
+            <>
+              <Input
+                label="First name"
+                type="text"
+                placeholder="Jane"
+                autoComplete="given-name"
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+              />
+              <Input
+                label="Last name"
+                type="text"
+                placeholder="Smith"
+                autoComplete="family-name"
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+              />
+            </>
+          ) : null}
 
-          <Input label="Email" type="email" placeholder="you@example.com" autoComplete="email" />
+          <Input
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
 
           <Input
             label="Password"
             type="password"
             placeholder="••••••••"
             autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
           />
 
           {mode === 'signup' ? (
@@ -43,11 +129,15 @@ export function AuthPage() {
               type="password"
               placeholder="••••••••"
               autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
             />
           ) : null}
 
-          <Button type="submit" variant="primary" size="lg" className="mt-2 w-full rounded-xl">
-            {mode === 'signup' ? 'Create account' : 'Sign in'}
+          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+
+          <Button type="submit" variant="primary" size="lg" className="mt-2 w-full rounded-xl" disabled={isSubmitting}>
+            {isSubmitting ? 'Please wait...' : mode === 'signup' ? 'Create account' : 'Sign in'}
           </Button>
         </form>
 
@@ -56,8 +146,9 @@ export function AuthPage() {
             <>
               Already have an account?{' '}
               <button
+                type="button"
                 className="font-medium text-text underline-offset-2 hover:underline"
-                onClick={() => setMode('login')}
+                onClick={() => resetMode('login')}
               >
                 Sign in
               </button>
@@ -66,8 +157,9 @@ export function AuthPage() {
             <>
               No account yet?{' '}
               <button
+                type="button"
                 className="font-medium text-text underline-offset-2 hover:underline"
-                onClick={() => setMode('signup')}
+                onClick={() => resetMode('signup')}
               >
                 Sign up free
               </button>

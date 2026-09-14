@@ -28,9 +28,15 @@ function readNumber(name: string, fallback?: number) {
   return parsedValue;
 }
 
+const nodeEnv = process.env.NODE_ENV ?? 'production';
+
 export const env = {
-  nodeEnv: process.env.NODE_ENV ?? 'production',
+  nodeEnv,
   port: readNumber('PORT', 3001),
+  sessionSecret: readString(
+    'SESSION_SECRET',
+    nodeEnv === 'production' ? undefined : 'development-only-session-secret'
+  ),
   dbHost: readString('POSTGRES_HOST', 'postgres'),
   dbPort: readNumber('POSTGRES_PORT', 5432),
   dbName: readString('POSTGRES_DB'),

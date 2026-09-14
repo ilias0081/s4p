@@ -10,6 +10,7 @@ const pool = new Pool({
   database: env.dbName,
   user: env.dbUser,
   password: env.dbPassword,
+  options: '-c search_path=s4p,public',
   max: 10,
   idleTimeoutMillis: 30_000
 });
