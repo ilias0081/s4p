@@ -23,7 +23,6 @@ services:
     environment:
       NODE_ENV: development
       SESSION_SECRET: development-only-session-secret
-      NODE_OPTIONS: "--inspect=0.0.0.0:9229"
     volumes:
       - ./backend:/app
       - backend_node_modules:/app/node_modules

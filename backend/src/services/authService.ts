@@ -1,6 +1,8 @@
 import { randomBytes, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 
+import type { Selectable } from 'kysely';
+
 import { db } from '../db/database.js';
 import type { Database } from '../db/types.js';
 
@@ -8,7 +10,7 @@ const scrypt = promisify(nodeScrypt);
 const HASH_LENGTH = 64;
 const SALT_LENGTH = 16;
 
-export type User = Database['users'];
+export type User = Selectable<Database['users']>;
 
 export type CreateUserInput = {
   firstName: string;
@@ -51,7 +53,7 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
   }
 }
 
-export async function createUser(input: CreateUserInput): Promise<User> {
+export async function createUser(input: CreateUserInput): Promise<SafeUser> {
   const email = normalizeEmail(input.email);
   const passwordHash = await hashPassword(input.password);
 
@@ -63,7 +65,7 @@ export async function createUser(input: CreateUserInput): Promise<User> {
       email,
       password: passwordHash
     })
-    .returningAll()
+    .returning(['id', 'first_name', 'last_name', 'email'])
     .executeTakeFirstOrThrow();
 
   return user;

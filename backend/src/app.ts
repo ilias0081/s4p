@@ -2,7 +2,11 @@ import express from 'express';
 import session from 'express-session';
 
 import { env } from './config/env.js';
+import './lib/bigintJson.js';
+import { issueCsrfToken, verifyCsrfToken } from './middleware/csrf.js';
+import { requireAuth } from './middleware/requireAuth.js';
 import { authRouter } from './routes/auth.js';
+import { dashboardRouter } from './routes/dashboard.js';
 import { healthRouter } from './routes/health.js';
 
 export function createApp() {
@@ -24,8 +28,12 @@ export function createApp() {
     })
   );
 
+  app.get('/api/csrf-token', issueCsrfToken);
+  app.use('/api', verifyCsrfToken);
+
   app.use('/api', healthRouter);
   app.use('/api', authRouter);
+  app.use('/api', requireAuth, dashboardRouter);
 
   app.use((_request, response) => {
     response.status(404).json({

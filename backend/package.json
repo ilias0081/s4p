@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "dev": "tsx watch --watch src src/index.ts"
+    "dev": "tsx watch --inspect=0.0.0.0:9229 --watch src src/index.ts"
   },
   "dependencies": {
     "express": "^4.21.0",

@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 
-import { authenticateUser, createUser, findUserByEmail } from '../services/auth.js';
+import { authenticateUser, createUser, findUserByEmail } from '../services/authService.js';
 
 export async function registerUser(request: Request, response: Response) {
   try {
