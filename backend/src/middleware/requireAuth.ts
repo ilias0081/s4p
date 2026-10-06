@@ -1,9 +1,12 @@
 import type { NextFunction, Request, Response } from 'express';
 
-export function requireAuth(request: Request, response: Response, next: NextFunction) {
-  if (!request.session.userId) {
-    return response.status(401).json({ error: 'Not authenticated.' });
-  }
+import { getUserId, handleCommonError } from '../lib/utils.js';
 
-  return next();
+export function requireAuth(request: Request, response: Response, next: NextFunction) {
+  try {
+    getUserId(request);
+    return next();
+  } catch (error) {
+    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to verify session.' });
+  }
 }

@@ -22,6 +22,19 @@ const api = ky.create({
         }
       },
     ],
+    afterResponse: [
+      async ({ response }) => {
+        if (response.status !== 401) {
+          return;
+        }
+
+        const body = (await response.clone().json().catch(() => undefined)) as { code?: string } | undefined;
+
+        if (body?.code === 'NOT_AUTHENTICATED') {
+          window.location.replace('/auth');
+        }
+      },
+    ],
   },
 });
 

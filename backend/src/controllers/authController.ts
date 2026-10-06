@@ -1,15 +1,17 @@
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 
+import { getUserId, handleCommonError, notAuthenticatedError, validateBody } from '../lib/utils.js';
 import { authenticateUser, createUser, findUserByEmail } from '../services/authService.js';
 
 export async function registerUser(request: Request, response: Response) {
   try {
-    const { firstName, lastName, email, password } = request.body ?? {};
-
-    if (!firstName || !lastName || !email || !password) {
-      return response.status(400).json({ error: 'Missing required fields.' });
-    }
-
+    const { firstName, lastName, email, password } = validateBody(request.body, z.object({
+      firstName: z.string().trim().min(1),
+      lastName: z.string().trim().min(1),
+      email: z.string().trim().email(),
+      password: z.string().min(1),
+    }));
     const existingUser = await findUserByEmail(email);
 
     if (existingUser) {
@@ -28,19 +30,16 @@ export async function registerUser(request: Request, response: Response) {
       user,
     });
   } catch (error) {
-    console.error('Register user failed:', error);
-    return response.status(500).json({ error: 'Unable to create user.' });
+    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to create user.' });
   }
 }
 
 export async function loginUser(request: Request, response: Response) {
   try {
-    const { email, password } = request.body ?? {};
-
-    if (!email || !password) {
-      return response.status(400).json({ error: 'Email and password are required.' });
-    }
-
+    const { email, password } = validateBody(request.body, z.object({
+      email: z.string().trim().email(),
+      password: z.string().min(1),
+    }));
     const user = await authenticateUser(email, password);
 
     if (!user) {
@@ -49,8 +48,7 @@ export async function loginUser(request: Request, response: Response) {
 
     request.session.regenerate((sessionError) => {
       if (sessionError) {
-        console.error('Create login session failed:', sessionError);
-        return response.status(500).json({ error: 'Unable to sign in.' });
+        return handleCommonError(sessionError, response) ?? response.status(500).json({ error: 'Unable to sign in.' });
       }
 
       request.session.userId = user.id.toString();
@@ -62,32 +60,32 @@ export async function loginUser(request: Request, response: Response) {
       });
     });
   } catch (error) {
-    console.error('Login failed:', error);
-    return response.status(500).json({ error: 'Unable to sign in.' });
+    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to sign in.' });
   }
 }
 
 export async function getCurrentUser(request: Request, response: Response) {
-  if (!request.session.userId) {
-    return response.status(401).json({ error: 'Not authenticated.' });
+  try {
+    const userId = getUserId(request);
+    const user = await findUserByEmail(request.session.userEmail ?? '');
+
+    if (!user || user.id.toString() !== userId) {
+      request.session.destroy(() => undefined);
+      throw notAuthenticatedError();
+    }
+
+    const { password: _password, ...safeUser } = user;
+
+    return response.status(200).json({ user: safeUser });
+  } catch (error) {
+    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to get current user.' });
   }
-
-  const user = await findUserByEmail(request.session.userEmail ?? '');
-
-  if (!user || user.id.toString() !== request.session.userId) {
-    request.session.destroy(() => undefined);
-    return response.status(401).json({ error: 'Not authenticated.' });
-  }
-
-  const { password: _password, ...safeUser } = user;
-
-  return response.status(200).json({ user: safeUser });
 }
 
 export function logoutUser(request: Request, response: Response) {
   request.session.destroy((error) => {
     if (error) {
-      return response.status(500).json({ error: 'Unable to sign out.' });
+      return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to sign out.' });
     }
 
     response.clearCookie('connect.sid');

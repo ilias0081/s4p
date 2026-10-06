@@ -5,7 +5,10 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import App from './App';
 import api from './lib/api/api';
 import './main.css';
-import { Dashboard, DashboardHome, SettingsPage } from './pages/dashboard/Dashboard';
+import { Dashboard } from './pages/dashboard/Dashboard';
+import { IntegrationsPage } from './pages/dashboard/sub_pages/IntegrationsPage';
+import { SettingsPage } from './pages/dashboard/sub_pages/SettingsPage';
+import { WorkflowList } from './pages/dashboard/sub_pages/WorkflowList';
 import { AuthPage } from './pages/login/login';
 import { WorkflowPage } from './pages/workflow/WorkflowPage';
 
@@ -22,7 +25,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<App />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/dashboard" element={<Dashboard />}>
-            <Route index element={<DashboardHome />} />
+            <Route index element={<WorkflowList />} />
+            <Route path="integrations" element={<IntegrationsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
           <Route path="/dashboard/workflows/:workflowId" element={<WorkflowPage />} />

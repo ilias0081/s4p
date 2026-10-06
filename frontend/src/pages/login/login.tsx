@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../../lib/components/Button';
-import { Input } from '../../lib/components/Input';
+import { Button } from '../../lib/components/Button/Button';
+import { Input } from '../../lib/components/Input/Input';
 import { useLogin, useSignUp } from './auth';
 
 type Mode = 'login' | 'signup';

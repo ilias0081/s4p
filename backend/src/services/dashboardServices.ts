@@ -1,13 +1,13 @@
 import type { Selectable } from 'kysely';
 
 import { db } from '../db/database.js';
-import type { Database } from '../db/types.js';
+import type { DB } from '../db/types.js';
 
-export type Workflow = Selectable<Database['workflows']>;
+export type Workflow = Selectable<DB['s4p.workflows']>;
 
 export async function getWorkflowsForUser(userId: string): Promise<Workflow[]> {
   return db
-    .selectFrom('workflows')
+    .selectFrom('s4p.workflows')
     .selectAll()
     .where('user_id', '=', userId)
     .orderBy('id', 'asc')
@@ -16,7 +16,7 @@ export async function getWorkflowsForUser(userId: string): Promise<Workflow[]> {
 
 export async function createWorkflow(userId: string, name: string): Promise<Workflow> {
   return db
-    .insertInto('workflows')
+    .insertInto('s4p.workflows')
     .values({ user_id: userId, name })
     .returningAll()
     .executeTakeFirstOrThrow();
@@ -28,7 +28,7 @@ export async function updateWorkflowForUser(
   name: string
 ): Promise<Workflow | undefined> {
   return db
-    .updateTable('workflows')
+    .updateTable('s4p.workflows')
     .set({ name })
     .where('id', '=', workflowId)
     .where('user_id', '=', userId)
@@ -38,7 +38,7 @@ export async function updateWorkflowForUser(
 
 export async function deleteWorkflowForUser(workflowId: string, userId: string): Promise<boolean> {
   const result = await db
-    .deleteFrom('workflows')
+    .deleteFrom('s4p.workflows')
     .where('id', '=', workflowId)
     .where('user_id', '=', userId)
     .executeTakeFirst();

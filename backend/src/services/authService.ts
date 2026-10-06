@@ -4,13 +4,13 @@ import { promisify } from 'node:util';
 import type { Selectable } from 'kysely';
 
 import { db } from '../db/database.js';
-import type { Database } from '../db/types.js';
+import type { DB } from '../db/types.js';
 
 const scrypt = promisify(nodeScrypt);
 const HASH_LENGTH = 64;
 const SALT_LENGTH = 16;
 
-export type User = Selectable<Database['users']>;
+export type User = Selectable<DB['s4p.users']>;
 
 export type CreateUserInput = {
   firstName: string;
@@ -58,7 +58,7 @@ export async function createUser(input: CreateUserInput): Promise<SafeUser> {
   const passwordHash = await hashPassword(input.password);
 
   const user = await db
-    .insertInto('users')
+    .insertInto('s4p.users')
     .values({
       first_name: input.firstName.trim(),
       last_name: input.lastName.trim(),
@@ -75,7 +75,7 @@ export async function findUserByEmail(email: string): Promise<User | undefined> 
   const normalizedEmail = normalizeEmail(email);
 
   return db
-    .selectFrom('users')
+    .selectFrom('s4p.users')
     .selectAll()
     .where('email', '=', normalizedEmail)
     .executeTakeFirst();
