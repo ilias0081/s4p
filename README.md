@@ -103,6 +103,7 @@ Notes:
 
 The root `.env` must define these variables:
 
+- `COMPOSE_PROJECT_NAME`
 - `POSTGRES_DB`
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
@@ -110,6 +111,7 @@ The root `.env` must define these variables:
 - `BACKEND_PORT`
 - `FRONTEND_PORT`
 - `NGINX_PORT`
+- `DATABASE_URL`
 
 Example:
 
@@ -122,6 +124,7 @@ POSTGRES_PORT=5432
 BACKEND_PORT=3001
 FRONTEND_PORT=4173
 NGINX_PORT=8080
+DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DB}"
 ```
 
 ## Notes

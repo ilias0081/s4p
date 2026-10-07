@@ -30,7 +30,7 @@ const api = ky.create({
 
         const body = (await response.clone().json().catch(() => undefined)) as { code?: string } | undefined;
 
-        if (body?.code === 'NOT_AUTHENTICATED') {
+        if (body?.code === 'NOT_AUTHENTICATED' && window.location.hostname !== 'localhost') {
           window.location.replace('/auth');
         }
       },

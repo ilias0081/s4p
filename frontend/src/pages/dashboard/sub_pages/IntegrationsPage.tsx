@@ -43,7 +43,7 @@ export function IntegrationsPage() {
     setConnectError('');
 
     // opened synchronously inside the click so popup blockers allow it; navigated once the url arrives
-    const popup = window.open('about:blank', 'integration_oauth', 'width=600,height=700');
+    const popup = window.open('about:blank', 'integration_oauth', 'width=500,height=500');
 
     if (!popup) {
       setConnectError('The popup was blocked. Allow popups for this site and try again.');
