@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import api from '../../lib/api/api';
 
@@ -15,7 +15,7 @@ export type LoginInput = {
 };
 
 export type AuthUser = {
-  id: number;
+  id: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -29,6 +29,10 @@ export type AuthResponse = {
 export type SessionResponse = {
   user: AuthUser;
 };
+
+export async function getUserData(): Promise<{ user: AuthUser | null }> {
+  return api.get('user-data').json<{ user: AuthUser | null }>();
+}
 
 async function postJson<T>(url: string, body: Record<string, unknown>): Promise<T> {
   return api.post(url, { json: body }).json<T>();
@@ -57,8 +61,12 @@ export function useSignUp() {
 }
 
 export function useLogin() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: loginUser,
+    onSuccess: ({ user }) => {
+      queryClient.setQueryData(['session'], { user });
+    },
   });
 }
 
@@ -71,7 +79,11 @@ export function useCurrentUser() {
 }
 
 export function useLogout() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: logoutUser,
+    onSuccess: () => {
+      queryClient.clear();
+    },
   });
 }

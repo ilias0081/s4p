@@ -5,6 +5,10 @@ export function notAuthenticatedError() {
   return Object.assign(new Error('Not authenticated.'), { code: 'NOT_AUTHENTICATED' });
 }
 
+export function codedError(code: string, message: string) {
+  return Object.assign(new Error(message), { code });
+}
+
 export function getUserId(request: Request): string {
   const userId = request.session.userId;
 
@@ -42,6 +46,22 @@ export function handleCommonError(error: unknown, response: Response): Response 
 
   if (typedError.code === 'NOT_AUTHENTICATED') {
     return response.status(401).json({ error: 'Not authenticated.', code: 'NOT_AUTHENTICATED' });
+  }
+
+  if (typedError.code === 'INTEGRATION_NOT_FOUND') {
+    return response.status(404).json({ error: 'Integration not found.' });
+  }
+
+  if (typedError.code === 'INTEGRATION_NOT_SUPPORTED') {
+    return response.status(501).json({ error: 'This integration is not supported yet.' });
+  }
+
+  if (typedError.code === 'OAUTH_NOT_PENDING') {
+    return response.status(400).json({ error: 'No connection is in progress. Start again from the integrations page.' });
+  }
+
+  if (typedError.code === 'OAUTH_TOKEN_EXCHANGE_FAILED') {
+    return response.status(400).json({ error: 'The provider rejected the authorization code. Please try connecting again.' });
   }
 
   if (typedError.code === 'SCHEMA_INVALID') {

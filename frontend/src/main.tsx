@@ -9,13 +9,23 @@ import { Dashboard } from './pages/dashboard/Dashboard';
 import { IntegrationsPage } from './pages/dashboard/sub_pages/IntegrationsPage';
 import { SettingsPage } from './pages/dashboard/sub_pages/SettingsPage';
 import { WorkflowList } from './pages/dashboard/sub_pages/WorkflowList';
+import { IntegrationOAuthCallback } from './pages/integration_oauth_callback/IntegrationOAuthCallback';
 import { AuthPage } from './pages/login/login';
+import { getUserData } from './pages/login/auth';
 import { WorkflowPage } from './pages/workflow/WorkflowPage';
 
 const queryClient = new QueryClient();
 
 // fetch the CSRF cookie before any mutating request is made
-void api.get('csrf-token');
+void api.get('csrf-token')
+  .then(() => queryClient.query({
+    queryKey: ['session'],
+    queryFn: getUserData,
+    retry: false,
+  }))
+  .catch((error: unknown) => {
+    console.error('Unable to initialize user data:', error);
+  });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -30,6 +40,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="settings" element={<SettingsPage />} />
           </Route>
           <Route path="/dashboard/workflows/:workflowId" element={<WorkflowPage />} />
+          <Route path="/integration_oauth_callback" element={<IntegrationOAuthCallback />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

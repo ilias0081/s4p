@@ -8,7 +8,7 @@ type Mode = 'login' | 'signup';
 
 export function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>('signup');
+  const [mode, setMode] = useState<Mode>('login');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
