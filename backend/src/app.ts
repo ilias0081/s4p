@@ -8,6 +8,7 @@ import { requireAuth } from './middleware/requireAuth.js';
 import { authRouter } from './routes/auth.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { healthRouter } from './routes/health.js';
+import { workflowEditorRouter } from './routes/workflows.js';
 
 export function createApp() {
   const app = express();
@@ -34,6 +35,7 @@ export function createApp() {
   app.use('/api', healthRouter);
   app.use('/api', authRouter);
   app.use('/api', requireAuth, dashboardRouter);
+  app.use('/api', requireAuth, workflowEditorRouter);
 
   app.use((_request, response) => {
     response.status(404).json({

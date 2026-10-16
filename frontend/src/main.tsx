@@ -12,9 +12,15 @@ import { WorkflowList } from './pages/dashboard/sub_pages/WorkflowList';
 import { IntegrationOAuthCallback } from './pages/integration_oauth_callback/IntegrationOAuthCallback';
 import { AuthPage } from './pages/login/login';
 import { getUserData } from './pages/login/auth';
-import { WorkflowPage } from './pages/workflow/WorkflowPage';
+import { WorkflowEditor } from './pages/workflow/WorkflowEditor';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
 
 // fetch the CSRF cookie before any mutating request is made
 void api.get('csrf-token')
@@ -39,7 +45,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="integrations" element={<IntegrationsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
-          <Route path="/dashboard/workflows/:workflowId" element={<WorkflowPage />} />
+          <Route path="/dashboard/workflows/:workflowId" element={<WorkflowEditor />} />
           <Route path="/integration_oauth_callback" element={<IntegrationOAuthCallback />} />
         </Routes>
       </BrowserRouter>

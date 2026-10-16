@@ -1,0 +1,33 @@
+
+
+.react-flow__attribution {
+    display: none !important;
+}
+
+.workflow-canvas.react-flow {
+    --xy-background-color: #2d184a;
+    --xy-node-background-color: #1A1129;
+    --xy-node-border: 1px solid #4d3b65;
+    --xy-node-border-radius: 1rem;
+    --xy-node-color: #ffffff;
+    --xy-edge-stroke: #4d3b65;
+    --xy-handle-background-color: #2d184a;
+    --xy-handle-border-color: #4d3b65;
+}
+
+.workflow-canvas .react-flow__node-default {
+    background-color: #1A1129;
+    opacity: 1;
+    padding: 1rem;
+}
+
+.workflow-canvas .react-flow__controls-button {
+    background-color: #1A1129;
+    color: #ffffff;
+    fill: currentColor;
+    opacity: 1;
+}
+
+.workflow-canvas .react-flow__controls-button:hover {
+    background-color: #2f1f4a;
+}

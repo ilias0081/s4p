@@ -1,7 +1,7 @@
 import { sql } from 'kysely';
 
 import { db } from '../db/database.js';
-import { createCodeVerifier, type Integration, type IntegrationRecord, type PendingOAuth } from '../lib/integration.js';
+import { createCodeVerifier, type Integration, type IntegrationRecord, type PendingOAuth } from '../lib/Integration.js';
 import { codedError } from '../lib/utils.js';
 import { UUID } from 'crypto';
 

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Integration, type IntegrationAccount } from '../../lib/integration.js';
+import { Integration, type IntegrationAccount } from '../../lib/Integration.js';
 import { codedError } from '../../lib/utils.js';
 
 export type MicrosoftCredentials = {
