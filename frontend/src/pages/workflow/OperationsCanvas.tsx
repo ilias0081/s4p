@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import {
   ReactFlow, Background, Controls, BaseEdge, EdgeLabelRenderer,
-  getBezierPath, MarkerType, type EdgeProps, type Edge, type Node,
+  getBezierPath, Handle, MarkerType, Position, type EdgeProps, type Edge, type Node,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import type { Operation } from './operations';
+import type { Operation, OperationPosition } from './operations';
 
 type AddOperationEdge = Edge<{ onAdd: () => void }>;
 
@@ -26,7 +26,14 @@ function AddButtonEdge(props: EdgeProps<AddOperationEdge>) {
 
 const edgeTypes = { addButton: AddButtonEdge };
 
-export function OperationsCanvas({ operations, onAdd }: { operations: Operation[]; onAdd: () => void }) {
+// An invisible endpoint lets React Flow render a real edge beyond the last operation.
+function HangingEndpoint() {
+  return <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: 'none' }} />;
+}
+
+const nodeTypes = { hangingEndpoint: HangingEndpoint };
+
+export function OperationsCanvas({ operations, onAdd }: { operations: Operation[]; onAdd: (position: OperationPosition) => void }) {
   const { nodes, edges } = useMemo(() => {
     const nodes: Node[] = [];
     const edges: AddOperationEdge[] = [];
@@ -47,8 +54,28 @@ export function OperationsCanvas({ operations, onAdd }: { operations: Operation[
         nodes.push({
           id: operation.id,
           position: { x: column * 240, y: depth * 180 },
-          data: { label: operation.type.replace(/_/g, ' ') },
+          data: { label: (operation.method ?? operation.type).replace(/_/g, ' ') },
         });
+        if (!operation.next.true && !operation.next.false) {
+          const endpointId = `${operation.id}-end`;
+          nodes.push({
+            id: endpointId,
+            type: 'hangingEndpoint',
+            position: { x: column * 240, y: depth * 180 + 160 },
+            // Match the standard node width so the endpoint is directly below its handle.
+            style: { width: 150, height: 1, pointerEvents: 'none' },
+            focusable: false,
+            data: {},
+          });
+          edges.push({
+            id: `${operation.id}-hanging`,
+            source: operation.id,
+            target: endpointId,
+            type: 'addButton',
+            markerEnd: { type: MarkerType.ArrowClosed },
+            data: { onAdd: () => onAdd({ sourceId: operation.id, branch: 'true', targetId: null }) },
+          });
+        }
         for (const next of [operation.next.true, operation.next.false]) {
           if (next) queue.push({ operation: next, depth: depth + 1 });
         }
@@ -64,7 +91,7 @@ export function OperationsCanvas({ operations, onAdd }: { operations: Operation[
           source: operation.id, target: next.id, type: 'addButton',
           label: operation.type === 'condition' ? branch : undefined,
           markerEnd: { type: MarkerType.ArrowClosed },
-          data: { onAdd },
+          data: { onAdd: () => onAdd({ sourceId: operation.id, branch, targetId: next.id }) },
         });
       }
     }
@@ -72,7 +99,7 @@ export function OperationsCanvas({ operations, onAdd }: { operations: Operation[
   }, [operations, onAdd]);
 
   return (
-    <ReactFlow className="workflow-canvas" nodes={nodes} edges={edges} edgeTypes={edgeTypes} fitView colorMode="dark"
+    <ReactFlow className="workflow-canvas" nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView colorMode="dark"
       nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}>
       <Background />
       <Controls showInteractive={false} />

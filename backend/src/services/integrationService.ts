@@ -36,7 +36,7 @@ export async function getIntegrationsForUser(userId: string): Promise<Integratio
   return rows.map((row) => ({ ...row, is_connected: Boolean(row.is_connected) }));
 }
 
-async function loadIntegration(integrationId: string): Promise<Integration> {
+export async function loadIntegration(integrationId: string): Promise<Integration> {
   const record: IntegrationRecord | undefined = await db
     .selectFrom('s4p.integrations')
     .select(['id', 'name', 'credentials'])
@@ -55,7 +55,8 @@ async function loadIntegration(integrationId: string): Promise<Integration> {
   let module: { default: new (record: IntegrationRecord) => Integration };
 
   try {
-    module = await import(`../integrations/${record.name}/${record.name}.ts`);
+    const extension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
+    module = await import(`../integrations/${record.name}/${record.name}.${extension}`);
   } catch {
     throw codedError('INTEGRATION_NOT_SUPPORTED', `No implementation for integration: ${record.name}`);
   }

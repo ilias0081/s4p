@@ -41,6 +41,8 @@ export interface S4pIntegrations {
 }
 
 export interface S4pOperations {
+  app_id: string | null;
+  app_method: string | null;
   configuration: Json;
   id: Generated<string>;
   next_operation_id_false: string | null;
@@ -57,6 +59,7 @@ export interface S4pUserIntegrations {
   email: string;
   id: Generated<string>;
   integration_id: string;
+  needs_reauth: Generated<boolean>;
   refresh_token: string | null;
   user_id: string;
 }

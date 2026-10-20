@@ -42,7 +42,11 @@ export function handleCommonError(error: unknown, response: Response): Response 
     return undefined;
   }
 
-  const typedError = error as { code?: string; issues?: z.ZodIssue[] };
+  const typedError = error as { code?: string; message?: string; issues?: z.ZodIssue[] };
+
+  if (typedError.code === 'UI_ERROR') {
+    return response.status(400).json({ error: typedError.message });
+  }
 
   if (typedError.code === 'NOT_AUTHENTICATED') {
     return response.status(401).json({ error: 'Not authenticated.', code: 'NOT_AUTHENTICATED' });

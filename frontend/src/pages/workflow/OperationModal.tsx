@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../lib/components/Button/Button';
-import { AppsList } from './AppsList';
+import { AppsList, type App } from './AppsList';
+import { List, ListItem } from '../../lib/components/List/List';
+import { useAppMethods, useCreateOperation, type OperationPosition } from './operations';
+import { HTTPError } from 'ky';
 
 const operationTypes = [
   { type: 'trigger', label: 'App Event', description: 'Wait for something to happen inside an app', icon: 'M13 2 4 14h7l-1 8 10-12h-7l1-8Z' },
@@ -11,10 +14,32 @@ const operationTypes = [
 
 type SelectableOperationType = typeof operationTypes[number]['type'];
 
-export function OperationModal({ triggerOnly = false, onClose }: { triggerOnly?: boolean; onClose: () => void }) {
+export function OperationModal({ workflowId, position, triggerOnly = false, onClose }: {
+  workflowId: string; position?: OperationPosition; triggerOnly?: boolean; onClose: () => void;
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [selectedType, setSelectedType] = useState<SelectableOperationType | null>(triggerOnly ? 'trigger' : null);
   const selected = operationTypes.find((operation) => operation.type === selectedType);
+  const [selectedApp, setSelectedApp] = useState<App | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const appType = selectedType === 'trigger' || selectedType === 'action_in_app' ? selectedType : null;
+  const methodsQuery = useAppMethods(selectedApp?.id, appType);
+  const createMutation = useCreateOperation(workflowId);
+  const close = () => { if (!createMutation.isPending) onClose(); };
+
+  const save = async () => {
+    if (!selectedApp || !selectedMethod || !appType || createMutation.isPending) return;
+    setError('');
+    try {
+      await createMutation.mutateAsync({ appId: selectedApp.id, method: selectedMethod, type: appType, position });
+      onClose();
+    } catch (saveError) {
+      const body = saveError instanceof HTTPError
+        ? await saveError.response.json().catch(() => null) as { error?: string } | null : null;
+      setError(body?.error ?? 'Unable to save operation. Please try again.');
+    }
+  };
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -23,19 +48,19 @@ export function OperationModal({ triggerOnly = false, onClose }: { triggerOnly?:
   }, []);
 
   return (
-    <dialog ref={dialogRef} aria-labelledby="operation-modal-title" onCancel={onClose}
-      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+    <dialog ref={dialogRef} aria-labelledby="operation-modal-title" onCancel={(event) => { event.preventDefault(); close(); }}
+      onClick={(event) => { if (event.target === event.currentTarget) close(); }}
       className="m-auto w-[calc(100%_-_2rem)] max-w-5xl overflow-hidden rounded-2xl border border-white/15 bg-background p-0 text-text shadow-panel backdrop:bg-black/60">
       <div className="flex max-h-[85vh] flex-col">
         <header className="flex items-center justify-between border-b border-white/15 px-6 py-4">
           <h2 id="operation-modal-title" className="text-lg font-semibold">Operation</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="rounded-full px-2 py-1 text-secondary hover:bg-white/10 hover:text-text">✕</button>
+          <button type="button" onClick={close} disabled={createMutation.isPending} aria-label="Close" className="rounded-full px-2 py-1 text-secondary hover:bg-white/10 hover:text-text">✕</button>
         </header>
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
           <aside aria-label="Operation types" className="flex shrink-0 flex-col gap-2 border-b border-white/15 p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:w-[300px] md:overflow-y-auto md:border-b-0 md:border-r">
             {operationTypes.map((operation) => (
-              <button key={operation.type} type="button" disabled={triggerOnly} aria-pressed={selectedType === operation.type}
-                onClick={() => setSelectedType(operation.type)}
+              <button key={operation.type} type="button" disabled={(triggerOnly && operation.type !== 'trigger') || createMutation.isPending} aria-pressed={selectedType === operation.type}
+                onClick={() => { setSelectedType(operation.type); setSelectedApp(null); setSelectedMethod(null); setError(''); }}
                 className={`flex w-full gap-3 rounded-xl border p-4 text-left transition disabled:cursor-default ${selectedType === operation.type ? 'border-primary bg-primary/20' : 'border-transparent hover:border-white/15 hover:bg-white/5'} ${triggerOnly && operation.type !== 'trigger' ? 'opacity-40' : ''}`}>
                 <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5">
                   <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={operation.icon} /></svg>
@@ -49,16 +74,40 @@ export function OperationModal({ triggerOnly = false, onClose }: { triggerOnly?:
               <>
                 <h3 className="mb-2 text-base font-semibold">{selected.label}</h3>
                 <p className="mb-6 text-sm text-secondary">{selected.description}</p>
-                {selectedType === 'trigger' || selectedType === 'action_in_app' ? <AppsList key={selectedType} /> : (
+                {appType ? selectedApp ? (
+                  <div>
+                    <Button type="button" size="sm" variant="neutral" disabled={createMutation.isPending}
+                      onClick={() => { setSelectedApp(null); setSelectedMethod(null); setError(''); }}>← {selectedApp.ui_name} · Change app</Button>
+                    <h4 className="mb-3 mt-5 text-sm font-semibold">Choose a method</h4>
+                    {methodsQuery.isPending ? <p className="text-sm text-secondary">Loading methods...</p> :
+                      methodsQuery.isError ? <p className="text-sm text-red-400">Unable to load methods for this app.</p> :
+                      !methodsQuery.data.methods.length ? <p className="text-sm text-secondary">No methods available for this operation type.</p> : (
+                        <List id="app-methods">
+                          {methodsQuery.data.methods.map((method) => (
+                            <ListItem key={method.method} className={selectedMethod === method.method ? '!border-primary !bg-primary/20 !p-0' : '!p-0'}>
+                              <button type="button" disabled={createMutation.isPending} aria-pressed={selectedMethod === method.method}
+                                className="w-full p-3 text-left" onClick={() => { setSelectedMethod(method.method); setError(''); }}>
+                                <span className="block text-sm font-semibold">{method.ui_name}</span>
+                                <span className="mt-1 block text-xs text-secondary">{method.description}</span>
+                              </button>
+                            </ListItem>
+                          ))}
+                        </List>
+                      )}
+                  </div>
+                ) : <AppsList key={selectedType} onSelect={(app) => { setSelectedApp(app); setSelectedMethod(null); setError(''); }} /> : (
                   <p className="text-sm text-secondary">Configuration for this operation type is coming soon.</p>
                 )}
               </>
             )}
           </section>
         </div>
-        <footer className="flex justify-end gap-3 border-t border-white/15 px-6 py-4">
-          <Button type="button" variant="neutral" onClick={onClose}>Cancel</Button>
-          <Button type="button" disabled>Save</Button>
+        <footer className="border-t border-white/15 px-6 py-4">
+          {error ? <p role="alert" className="mb-3 text-sm text-red-400">{error}</p> : null}
+          <div className="flex justify-end gap-3">
+          <Button type="button" variant="neutral" disabled={createMutation.isPending} onClick={close}>Cancel</Button>
+          <Button type="button" disabled={!selectedMethod || !appType || createMutation.isPending} onClick={() => void save()}>{createMutation.isPending ? 'Saving...' : 'Save'}</Button>
+          </div>
         </footer>
       </div>
     </dialog>
