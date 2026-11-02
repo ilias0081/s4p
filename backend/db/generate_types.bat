@@ -1,1 +1,0 @@
-npx kysely-codegen --env-file=..\.env --out-file=src/db/types.ts
