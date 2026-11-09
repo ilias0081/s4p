@@ -6,6 +6,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import type { Operation, OperationPosition } from './operations';
+import { OperationNodeMenu } from './OperationNodeMenu';
 
 type AddOperationEdge = Edge<{ onAdd: () => void }>;
 
@@ -33,7 +34,7 @@ function HangingEndpoint() {
 
 const nodeTypes = { hangingEndpoint: HangingEndpoint };
 
-export function OperationsCanvas({ operations, onAdd }: { operations: Operation[]; onAdd: (position: OperationPosition) => void }) {
+export function OperationsCanvas({ workflowId, operations, onAdd }: { workflowId: string; operations: Operation[]; onAdd: (position: OperationPosition) => void }) {
   const { nodes, edges } = useMemo(() => {
     const nodes: Node[] = [];
     const edges: AddOperationEdge[] = [];
@@ -54,7 +55,14 @@ export function OperationsCanvas({ operations, onAdd }: { operations: Operation[
         nodes.push({
           id: operation.id,
           position: { x: column * 240, y: depth * 180 },
-          data: { label: (operation.method ?? operation.type).replace(/_/g, ' ') },
+          // Keep embedded buttons clickable while node dragging/selection is disabled.
+          style: { pointerEvents: 'all' },
+          data: { label: (
+            <div className="flex items-start gap-2">
+              <span className="min-w-0 flex-1">{(operation.method ?? operation.type).replace(/_/g, ' ')}</span>
+              <OperationNodeMenu workflowId={workflowId} operationId={operation.id} />
+            </div>
+          ) },
         });
         if (!operation.next.true && !operation.next.false) {
           const endpointId = `${operation.id}-end`;
@@ -96,7 +104,7 @@ export function OperationsCanvas({ operations, onAdd }: { operations: Operation[
       }
     }
     return { nodes, edges };
-  }, [operations, onAdd]);
+  }, [workflowId, operations, onAdd]);
 
   return (
     <ReactFlow className="workflow-canvas" nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView colorMode="dark"

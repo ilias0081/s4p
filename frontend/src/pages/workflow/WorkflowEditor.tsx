@@ -44,7 +44,7 @@ export function WorkflowEditor() {
         {operationsQuery.isLoading ? <p className="p-6 text-secondary">Loading operations...</p> :
           operationsQuery.isError ? <p className="p-6 text-red-400">Unable to load operations.</p> : (
             <>
-              <OperationsCanvas operations={operationsQuery.data ?? []} onAdd={openOperationModal} />
+              <OperationsCanvas workflowId={workflowId!} operations={operationsQuery.data ?? []} onAdd={openOperationModal} />
               {operationsQuery.data?.length === 0 ? (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <Button type="button" className="pointer-events-auto" onClick={() => { setPosition(undefined); setModalMode('trigger'); }}>+ Add a trigger</Button>

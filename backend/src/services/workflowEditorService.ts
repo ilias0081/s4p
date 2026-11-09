@@ -90,6 +90,49 @@ export async function getApps() {
     .select(['id', 'name', 'ui_name']).orderBy('ui_name').execute();
 }
 
+export async function deleteWorkflowOperation(userId: string, workflowId: string, operationId: string) {
+  return db.transaction().execute(async (trx) => {
+    const workflow = await trx.selectFrom('s4p.workflows').select('id')
+      .where('id', '=', workflowId).where('user_id', '=', userId).forUpdate().executeTakeFirst();
+    if (!workflow) throw codedError('UI_ERROR', 'Workflow not found.');
+
+    const operations = await trx.selectFrom('s4p.operations').selectAll()
+      .where('workflow_id', '=', workflowId).execute();
+    const operation = operations.find((item) => item.id === operationId);
+    if (!operation) throw codedError('UI_ERROR', 'Operation not found.');
+
+    const successors = [...new Set([operation.next_operation_id_true, operation.next_operation_id_false]
+      .filter((id): id is string => id !== null && id !== operationId))];
+    if (successors.length > 1) {
+      throw codedError('UI_ERROR', 'Remove one of the outgoing branches before deleting this operation.');
+    }
+    const nextId = successors[0] ?? null;
+    const previousId = operation.previous_operation_id === operationId ? null : operation.previous_operation_id;
+
+    // Remove all references before deleting, preserving the remaining chain.
+    for (const item of operations) {
+      if (item.id === operationId) continue;
+
+      const changes: {
+        next_operation_id_true?: string | null;
+        next_operation_id_false?: string | null;
+        previous_operation_id?: string | null;
+      } = {};
+
+      if (item.next_operation_id_true === operationId) changes.next_operation_id_true = nextId;
+      if (item.next_operation_id_false === operationId) changes.next_operation_id_false = nextId;
+      if (item.previous_operation_id === operationId) changes.previous_operation_id = previousId;
+      
+      if (Object.keys(changes).length) {
+        await trx.updateTable('s4p.operations').set(changes).where('id', '=', item.id)
+          .where('workflow_id', '=', workflowId).execute();
+      }
+    }
+    await trx.deleteFrom('s4p.operations').where('id', '=', operationId)
+      .where('workflow_id', '=', workflowId).execute();
+  });
+}
+
 export async function getWorkflowOperations(userId: string, workflowId: string) {
   const workflow = await db.selectFrom('s4p.workflows')
     .select('id').where('id', '=', workflowId).where('user_id', '=', userId)

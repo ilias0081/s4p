@@ -66,6 +66,18 @@ export function useCreateOperation(workflowId: string) {
   });
 }
 
+export function useDeleteOperation(workflowId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (operationId: string) => {
+      await api.delete(`workflows/${workflowId}/operations/${operationId}`);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['workflow-operations', workflowId] });
+    },
+  });
+}
+
 export function modelOperations(rows: RawOperation[]): BaseOperation[] {
   // Create every instance first, so links share the same objects (including cycles).
   const byId = new Map(rows.map((row) => [row.id, new BaseOperation(row)]));

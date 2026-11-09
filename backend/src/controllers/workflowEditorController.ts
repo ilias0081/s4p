@@ -5,7 +5,19 @@ import { getUserId, handleCommonError, validateBody } from '../lib/utils.js';
 import {
   getApps as fetchApps, getWorkflowOperations as fetchWorkflowOperations,
   getAppMethods as fetchAppMethods, createWorkflowOperation as saveWorkflowOperation,
+  deleteWorkflowOperation as removeWorkflowOperation,
 } from '../services/workflowEditorService.js';
+
+export async function deleteWorkflowOperation(request: Request, response: Response) {
+  try {
+    const userId = getUserId(request);
+    const { workflowId, operationId } = validateBody(request.params, z.object({ workflowId: z.uuid(), operationId: z.uuid() }));
+    await removeWorkflowOperation(userId, workflowId, operationId);
+    return response.status(204).send();
+  } catch (error) {
+    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to delete operation.' });
+  }
+}
 
 export async function getAppMethods(request: Request, response: Response) {
   try {
