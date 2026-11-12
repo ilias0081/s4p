@@ -2,14 +2,22 @@ import { z } from 'zod';
 
 import type { Integration } from './Integration.js';
 import { codedError } from './utils.js';
+import { configurationSchema } from './operationReferences.js';
 
 export type AppMethodType = 'trigger' | 'action_in_app';
+
+export type AppExecutionContext = {
+  userId: string;
+  operationId: string;
+  workflowId: string;
+};
 
 export interface AppMethod {
   types: readonly AppMethodType[];
   method: string;
   ui_name: string;
   description: string;
+  readonly: boolean;
 }
 
 export type AppMethodDefinition = AppMethod & {
@@ -32,15 +40,22 @@ export function defineAppMethod<TSchema extends z.ZodObject, TResult>(
 }
 
 export abstract class App {
+  // Set before execution; method discovery does not require a context.
+  protected appExecutionContext!: AppExecutionContext;
+
   // Integration loading stays outside the constructor; discovery needs no API calls.
   constructor(protected readonly integration: Integration) {}
 
   protected abstract readonly methods: readonly AppMethodDefinition[];
 
+  setAppExecutionContext(context: AppExecutionContext): void {
+    this.appExecutionContext = { ...context };
+  }
+
   getAppMethods(type?: AppMethodType): AppMethod[] {
     return this.methods
       .filter((definition) => !type || definition.types.includes(type))
-      .map(({ types, method, ui_name, description }) => ({ types, method, ui_name, description }));
+      .map(({ types, method, ui_name, description, readonly }) => ({ types, method, ui_name, description, readonly }));
   }
 
   // JSON Schema is serializable and describes fields, required inputs, and defaults.
@@ -52,7 +67,14 @@ export abstract class App {
     return this.getMethod(method).inputSchema.parse(input);
   }
 
+  validateMethodConfiguration(method: string, input: unknown): Record<string, unknown> {
+    return configurationSchema(this.getMethod(method).inputSchema).parse(input) as Record<string, unknown>;
+  }
+
   async executeMethod(method: string, input: unknown): Promise<unknown> {
+    if (!this.appExecutionContext) {
+      throw codedError('APP_EXECUTION_CONTEXT_MISSING', 'Set the app execution context before executing a method.');
+    }
     return this.getMethod(method).invoke(input);
   }
 

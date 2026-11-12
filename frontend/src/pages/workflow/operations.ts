@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api/api';
+import type { InputSchema } from './SchemaForm';
 
 export type OperationType = 'action_in_app' | 'ai_data_trans' | 'condition' | 'data_trans' | 'loop' | 'trigger';
 
@@ -55,14 +56,28 @@ export function useAppMethods(appId: string | undefined, type: AppMethodType | n
   });
 }
 
-export function useCreateOperation(workflowId: string) {
+export function useSaveOperation(workflowId: string, operationId?: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { appId: string; method: string; type: AppMethodType; position?: OperationPosition }) =>
-      api.post(`workflows/${workflowId}/operations`, { json: input }).json<{ operation: RawOperation }>(),
+    mutationFn: (input: { appId: string; method: string; type: AppMethodType; configuration: Record<string, unknown>; position?: OperationPosition }) => {
+      if (operationId) {
+        const { position: _position, ...changes } = input;
+        return api.patch(`workflows/${workflowId}/operations/${operationId}`, { json: changes }).json<{ operation: RawOperation }>();
+      }
+      return api.post(`workflows/${workflowId}/operations`, { json: input }).json<{ operation: RawOperation }>();
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['workflow-operations', workflowId] });
+      await queryClient.invalidateQueries({ queryKey: ['reference-operations', workflowId] });
     },
+  });
+}
+
+export function useAppMethodInputSchema(appId: string | undefined, method: string | null) {
+  return useQuery({
+    queryKey: ['app-method-input-schema', appId, method],
+    enabled: !!appId && !!method,
+    queryFn: () => api.get(`apps/${appId}/methods/${encodeURIComponent(method!)}/input-schema`).json<{ schema: InputSchema }>(),
   });
 }
 

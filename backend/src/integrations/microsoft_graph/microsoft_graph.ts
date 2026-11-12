@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Integration, type IntegrationAccount } from '../../lib/Integration.js';
+import { Integration, type IntegrationAccount, type OAuthTokens } from '../../lib/Integration.js';
 import { codedError } from '../../lib/utils.js';
 
 export type MicrosoftCredentials = {
@@ -38,6 +38,30 @@ export default class MicrosoftGraph extends Integration<MicrosoftCredentials> {
     const { tenantId } = this.getCredentials();
 
     return `https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`;
+  }
+
+  protected async requestTokenRefresh(refreshToken: string): Promise<OAuthTokens> {
+    const { clientId, clientSecret } = this.getCredentials();
+    const response = await fetch(this.getTokenEndpoint(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const body: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      const error = z.object({ error: z.string() }).safeParse(body);
+      if (error.success && ['invalid_grant', 'interaction_required', 'consent_required', 'login_required'].includes(error.data.error)) {
+        throw codedError('OAUTH_REAUTH_REQUIRED', 'Reconnect Microsoft to authorize access again.');
+      }
+      throw codedError('UI_ERROR', `Unable to refresh Microsoft access (Microsoft returned ${response.status}).`);
+    }
+    return this.parseTokenResponse(body);
   }
 
   protected async getAccount(accessToken: string): Promise<IntegrationAccount> {

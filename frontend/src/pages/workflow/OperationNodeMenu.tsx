@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { HTTPError } from 'ky';
 import { useDeleteOperation } from './operations';
 
-export function OperationNodeMenu({ workflowId, operationId }: { workflowId: string; operationId: string }) {
+export function OperationNodeMenu({ workflowId, operationId, canDelete, onEdit }: {
+  workflowId: string; operationId: string; canDelete: boolean; onEdit: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,7 +28,7 @@ export function OperationNodeMenu({ workflowId, operationId }: { workflowId: str
   }, [open]);
 
   const remove = async () => {
-    if (deleteMutation.isPending) return;
+    if (!canDelete || deleteMutation.isPending) return;
     setError('');
     try {
       await deleteMutation.mutateAsync(operationId);
@@ -49,9 +51,10 @@ export function OperationNodeMenu({ workflowId, operationId }: { workflowId: str
       </button>
       {open ? (
         <div className="absolute left-full top-0 z-50 ml-2 w-24 rounded-lg border border-white/15 bg-[#1A1129] p-0.5 shadow-lg">
-          <button type="button" disabled className="block w-full rounded-md px-2 py-1 text-left text-xs text-secondary opacity-40">Edit</button>
-          <button type="button" disabled={deleteMutation.isPending} onClick={() => void remove()}
-            className="block w-full rounded-md px-2 py-1 text-left text-xs text-red-400 hover:bg-white/5 disabled:opacity-40">
+          <button type="button" disabled={deleteMutation.isPending} onClick={() => { setOpen(false); onEdit(); }}
+            className="block w-full rounded-md px-2 py-1 text-left text-xs enabled:hover:bg-white/5 disabled:opacity-40">Edit</button>
+          <button type="button" disabled={!canDelete || deleteMutation.isPending} onClick={() => void remove()}
+            className="block w-full rounded-md px-2 py-1 text-left text-xs text-red-400 enabled:hover:bg-white/5 disabled:cursor-default disabled:opacity-40">
             {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
           </button>
           {error ? <p role="alert" className="px-2 py-1 text-xs text-red-400">{error}</p> : null}

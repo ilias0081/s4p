@@ -3,13 +3,14 @@ import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
 import { codedError } from './utils.js';
+import { db } from '../db/database.js';
 
 const EXPIRY_BUFFER_SECONDS = 2 * 60;
 
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
   refresh_token: z.string().optional(),
-  expires_in: z.coerce.number(),
+  expires_in: z.coerce.number().positive().finite(),
 });
 
 export function createCodeVerifier(): string {
@@ -55,6 +56,63 @@ export abstract class Integration<
   constructor(record: IntegrationRecord) {
     this.record = record;
   }
+
+  async getAccessToken(userId: string): Promise<string> {
+    const account = await db.selectFrom('s4p.user_integrations')
+      .select(['access_token', 'access_token_expiry', 'needs_reauth'])
+      .where('user_id', '=', userId)
+      .where('integration_id', '=', this.record.id)
+      .executeTakeFirst();
+
+    if (!account || account.needs_reauth) {
+      throw codedError('UI_ERROR', 'Connect or reconnect your integration before running this operation.');
+    }
+    if (account.access_token && account.access_token_expiry && account.access_token_expiry.getTime() > Date.now()) {
+      return account.access_token;
+    }
+
+    const accessToken = await this.refreshAccessToken(userId);
+    if (accessToken) return accessToken;
+    throw codedError('UI_ERROR', 'Connect or reconnect your integration before running this operation.');
+  }
+
+  async refreshAccessToken(userId: string): Promise<string | null> {
+    return db.transaction().execute(async (trx) => {
+      // Serialize refreshes so concurrent requests do not reuse a rotated refresh token.
+      const account = await trx.selectFrom('s4p.user_integrations')
+        .select(['id', 'access_token', 'access_token_expiry', 'refresh_token', 'needs_reauth'])
+        .where('user_id', '=', userId).where('integration_id', '=', this.record.id)
+        .forUpdate().executeTakeFirst();
+
+      if (!account || account.needs_reauth) return null;
+      if (account.access_token && account.access_token_expiry && account.access_token_expiry.getTime() > Date.now()) {
+        return account.access_token; // Another request may have refreshed it while we waited.
+      }
+      if (!account.refresh_token) {
+        await trx.updateTable('s4p.user_integrations').set({ needs_reauth: true }).where('id', '=', account.id).execute();
+        return null;
+      }
+
+      let tokens: OAuthTokens;
+      try {
+        tokens = await this.requestTokenRefresh(account.refresh_token);
+      } catch (error) {
+        if (!(error instanceof Error) || !('code' in error) || error.code !== 'OAUTH_REAUTH_REQUIRED') throw error;
+        await trx.updateTable('s4p.user_integrations').set({ needs_reauth: true }).where('id', '=', account.id).execute();
+        return null;
+      }
+
+      await trx.updateTable('s4p.user_integrations').set({
+        access_token: tokens.accessToken,
+        refresh_token: tokens.refreshToken ?? account.refresh_token,
+        access_token_expiry: tokens.expiresAt,
+        needs_reauth: false,
+      }).where('id', '=', account.id).execute();
+      return tokens.accessToken;
+    });
+  }
+
+  protected abstract requestTokenRefresh(refreshToken: string): Promise<OAuthTokens>;
 
   protected abstract getAuthEndpoint(): string;
 
@@ -131,10 +189,14 @@ export abstract class Integration<
       throw codedError('OAUTH_TOKEN_EXCHANGE_FAILED', 'The provider rejected the authorization code.');
     }
 
-    const parsed = tokenResponseSchema.safeParse(await response.json());
+    return this.parseTokenResponse(await response.json());
+  }
+
+  protected parseTokenResponse(body: unknown): OAuthTokens {
+    const parsed = tokenResponseSchema.safeParse(body);
 
     if (!parsed.success) {
-      throw codedError('OAUTH_TOKEN_EXCHANGE_FAILED', 'The provider returned an unexpected token response.');
+      throw codedError('UI_ERROR', 'The provider returned an unexpected token response.');
     }
 
     const { access_token, refresh_token, expires_in } = parsed.data;
@@ -143,7 +205,7 @@ export abstract class Integration<
       accessToken: access_token,
       refreshToken: refresh_token,
       // Date.now() is UTC epoch milliseconds, so no timezone handling is needed
-      expiresAt: new Date(Date.now() + (expires_in - EXPIRY_BUFFER_SECONDS) * 1000),
+      expiresAt: new Date(Date.now() + Math.max(0, expires_in - EXPIRY_BUFFER_SECONDS) * 1000),
     };
   }
 

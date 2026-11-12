@@ -34,7 +34,9 @@ function HangingEndpoint() {
 
 const nodeTypes = { hangingEndpoint: HangingEndpoint };
 
-export function OperationsCanvas({ workflowId, operations, onAdd }: { workflowId: string; operations: Operation[]; onAdd: (position: OperationPosition) => void }) {
+export function OperationsCanvas({ workflowId, operations, onAdd, onEdit }: {
+  workflowId: string; operations: Operation[]; onAdd: (position: OperationPosition) => void; onEdit: (operation: Operation) => void;
+}) {
   const { nodes, edges } = useMemo(() => {
     const nodes: Node[] = [];
     const edges: AddOperationEdge[] = [];
@@ -60,7 +62,9 @@ export function OperationsCanvas({ workflowId, operations, onAdd }: { workflowId
           data: { label: (
             <div className="flex items-start gap-2">
               <span className="min-w-0 flex-1">{(operation.method ?? operation.type).replace(/_/g, ' ')}</span>
-              <OperationNodeMenu workflowId={workflowId} operationId={operation.id} />
+              <OperationNodeMenu workflowId={workflowId} operationId={operation.id}
+                onEdit={() => onEdit(operation)}
+                canDelete={operation.previous !== null || operations.length === 1} />
             </div>
           ) },
         });
@@ -104,7 +108,7 @@ export function OperationsCanvas({ workflowId, operations, onAdd }: { workflowId
       }
     }
     return { nodes, edges };
-  }, [workflowId, operations, onAdd]);
+  }, [workflowId, operations, onAdd, onEdit]);
 
   return (
     <ReactFlow className="workflow-canvas" nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView colorMode="dark"

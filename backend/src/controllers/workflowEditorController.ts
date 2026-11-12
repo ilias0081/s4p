@@ -6,7 +6,60 @@ import {
   getApps as fetchApps, getWorkflowOperations as fetchWorkflowOperations,
   getAppMethods as fetchAppMethods, createWorkflowOperation as saveWorkflowOperation,
   deleteWorkflowOperation as removeWorkflowOperation,
+  getAppMethodInputSchema as fetchAppMethodInputSchema,
+  getReferenceOperations as fetchReferenceOperations, executeOperation as runOperation,
+  updateWorkflowOperation as editWorkflowOperation,
 } from '../services/workflowEditorService.js';
+
+export async function updateWorkflowOperation(request: Request, response: Response) {
+  try {
+    const userId = getUserId(request);
+    const { workflowId, operationId } = validateBody(request.params, z.object({ workflowId: z.uuid(), operationId: z.uuid() }));
+    const input = validateBody(request.body, z.strictObject({
+      appId: z.uuid(), method: z.string().min(1), type: z.enum(['trigger', 'action_in_app']),
+      configuration: z.record(z.string(), z.unknown()),
+    }));
+    return response.json({ operation: await editWorkflowOperation(userId, workflowId, operationId, input) });
+  } catch (error) {
+    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to update operation.' });
+  }
+}
+
+export async function getReferenceOperations(request: Request, response: Response) {
+  try {
+    const userId = getUserId(request);
+    const { workflowId } = validateBody(request.params, z.object({ workflowId: z.uuid() }));
+    const { sourceId } = validateBody(request.query, z.object({ sourceId: z.uuid() }));
+    return response.json({ operations: await fetchReferenceOperations(userId, workflowId, sourceId) });
+  } catch (error) {
+    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to load preceding operations.' });
+  }
+}
+
+export async function executeOperation(request: Request, response: Response) {
+  try {
+    const userId = getUserId(request);
+    const { workflowId, operationId } = validateBody(request.params, z.object({ workflowId: z.uuid(), operationId: z.uuid() }));
+    const { sourceId } = validateBody(request.body, z.strictObject({ sourceId: z.uuid() }));
+    const cache = request.session.operationOutputs ?? {};
+    const result = await runOperation(userId, workflowId, operationId, sourceId, cache);
+    request.session.operationOutputs = cache;
+    response.setHeader('Cache-Control', 'no-store');
+    return response.json(result);
+  } catch (error) {
+    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to preview operation.' });
+  }
+}
+
+export async function getAppMethodInputSchema(request: Request, response: Response) {
+  try {
+    getUserId(request);
+    const { appId, method } = validateBody(request.params, z.object({ appId: z.uuid(), method: z.string().min(1) }));
+    return response.json({ schema: await fetchAppMethodInputSchema(appId, method) });
+  } catch (error) {
+    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to load method configuration.' });
+  }
+}
 
 export async function deleteWorkflowOperation(request: Request, response: Response) {
   try {
@@ -38,6 +91,7 @@ export async function createWorkflowOperation(request: Request, response: Respon
       appId: z.uuid(),
       method: z.string().min(1),
       type: z.enum(['trigger', 'action_in_app']),
+      configuration: z.record(z.string(), z.unknown()).optional(),
       position: z.strictObject({ sourceId: z.uuid(), branch: z.enum(['true', 'false']), targetId: z.uuid().nullable() }).optional(),
     }));
     const operation = await saveWorkflowOperation(userId, workflowId, input);

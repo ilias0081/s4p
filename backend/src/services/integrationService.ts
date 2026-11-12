@@ -84,6 +84,7 @@ export async function completeIntegrationOAuth(userId: string, pending: PendingO
     access_token_expiry: tokens.expiresAt.toISOString(),
     account_id: account.accountId,
     email: account.email,
+    needs_reauth: false,
   };
 
   // one row per (user, integration), so reconnecting refreshes the existing row

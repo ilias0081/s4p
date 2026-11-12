@@ -8,11 +8,15 @@ const icons = import.meta.glob<string>('../../lib/assets/integration_app_icons/*
   eager: true, query: '?url', import: 'default',
 });
 
-export function AppsList({ onSelect }: { onSelect: (app: App) => void }) {
-  const appsQuery = useQuery({
+export function useApps() {
+  return useQuery({
     queryKey: ['apps'],
     queryFn: () => api.get('apps').json<{ apps: App[] }>(),
   });
+}
+
+export function AppsList({ onSelect }: { onSelect: (app: App) => void }) {
+  const appsQuery = useApps();
 
   if (appsQuery.isPending) return <p className="text-secondary">Loading apps...</p>;
   if (appsQuery.isError) return <p className="text-red-400">Unable to load apps. Please try again.</p>;

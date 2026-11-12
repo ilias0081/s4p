@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { useWorkflows } from '../dashboard/workflows';
-import { useWorkflowOperations, type OperationPosition } from './operations';
+import { useWorkflowOperations, type OperationPosition, type Operation } from './operations';
 import { OperationsCanvas } from './OperationsCanvas';
 import { OperationModal } from './OperationModal';
 import { Button } from '../../lib/components/Button/Button';
@@ -15,8 +15,15 @@ export function WorkflowEditor() {
   const operationsQuery = useWorkflowOperations(workflowId);
   const [modalMode, setModalMode] = useState<'choose' | 'trigger' | null>(null);
   const [position, setPosition] = useState<OperationPosition>();
+  const [editingOperation, setEditingOperation] = useState<Operation | null>(null);
   const openOperationModal = useCallback((nextPosition: OperationPosition) => {
+    setEditingOperation(null);
     setPosition(nextPosition);
+    setModalMode('choose');
+  }, []);
+  const editOperation = useCallback((operation: Operation) => {
+    setEditingOperation(operation);
+    setPosition(undefined);
     setModalMode('choose');
   }, []);
 
@@ -44,16 +51,18 @@ export function WorkflowEditor() {
         {operationsQuery.isLoading ? <p className="p-6 text-secondary">Loading operations...</p> :
           operationsQuery.isError ? <p className="p-6 text-red-400">Unable to load operations.</p> : (
             <>
-              <OperationsCanvas workflowId={workflowId!} operations={operationsQuery.data ?? []} onAdd={openOperationModal} />
+              <OperationsCanvas workflowId={workflowId!} operations={operationsQuery.data ?? []} onAdd={openOperationModal} onEdit={editOperation} />
               {operationsQuery.data?.length === 0 ? (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <Button type="button" className="pointer-events-auto" onClick={() => { setPosition(undefined); setModalMode('trigger'); }}>+ Add a trigger</Button>
+                  <Button type="button" className="pointer-events-auto" onClick={() => { setEditingOperation(null); setPosition(undefined); setModalMode('trigger'); }}>+ Add a trigger</Button>
                 </div>
               ) : null}
             </>
           )}
       </div>
-      {modalMode && workflowId ? <OperationModal key={`${workflowId}-${modalMode}`} workflowId={workflowId} position={position} triggerOnly={modalMode === 'trigger'} onClose={() => setModalMode(null)} /> : null}
+      {modalMode && workflowId ? <OperationModal key={`${workflowId}-${editingOperation?.id ?? modalMode}`} workflowId={workflowId}
+        operation={editingOperation ?? undefined} position={position} triggerOnly={editingOperation ? !editingOperation.previous : modalMode === 'trigger'}
+        onClose={() => setModalMode(null)} /> : null}
     </main>
   );
 }
