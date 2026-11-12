@@ -29,7 +29,7 @@ export function Button({
     <button
       {...props}
       className={[
-        'inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition',
+        'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition',
         variantClasses[variant],
         sizeClasses[size],
         'disabled:pointer-events-none disabled:opacity-40',

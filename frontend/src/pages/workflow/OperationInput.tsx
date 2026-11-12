@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type InputHTMLAttributes, type ChangeEvent, type KeyboardEvent } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type InputHTMLAttributes, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { HTTPError } from 'ky';
 import api from '../../lib/api/api';
@@ -47,9 +47,9 @@ function OutputFields({ output, path = [], onSelect }: { output: unknown; path?:
 }
 
 // A text input with an output picker; reference tokens remain editable plain text.
-export function OperationInput({ value, onValueChange, multiline = false, ...props }: Pick<InputHTMLAttributes<HTMLInputElement>,
+export function OperationInput({ value, onValueChange, multiline = false, action, ...props }: Pick<InputHTMLAttributes<HTMLInputElement>,
   'id' | 'className' | 'required' | 'minLength' | 'maxLength' | 'placeholder' | 'disabled' | 'aria-describedby'> & {
-  value: string; multiline?: boolean; onValueChange: (value: string) => void;
+  value: string; multiline?: boolean; action?: ReactNode; onValueChange: (value: string) => void;
 }) {
   const context = useContext(OperationInputContext);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -122,9 +122,14 @@ export function OperationInput({ value, onValueChange, multiline = false, ...pro
     'aria-expanded': open, 'aria-controls': open ? `${props.id}-output-picker` : undefined };
 
   return <div ref={containerRef} className="relative min-w-0">
+    <div className="flex items-center gap-2">
+    <div className="min-w-0 flex-1">
     {multiline
       ? <Textarea {...fieldProps} ref={(element) => { inputRef.current = element; }} />
       : <input {...fieldProps} ref={(element) => { inputRef.current = element; }} type="text" />}
+    </div>
+    {action}
+    </div>
     {open && <div id={`${props.id}-output-picker`} role="region" aria-label="Output data"
       className="relative z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-white/20 bg-[#1A1129] p-3 shadow-lg">
       <div className="mb-2 flex items-center justify-between">

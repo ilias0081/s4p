@@ -1,5 +1,6 @@
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { OperationInput, OperationInputContext } from './OperationInput';
+import { Repeatable } from '../../lib/components/Repeatable/Repeatable';
 
 // The backend converts each Zod input schema to JSON Schema for the browser.
 export type InputSchema = {
@@ -36,8 +37,8 @@ export function getInitialValue(schema: InputSchema): unknown {
 
 const inputClass = 'w-full rounded-lg border border-white/20 bg-[#1A1129] px-3 py-2 text-sm text-text';
 
-function SchemaField({ label, schema, value, required = false, onChange }: {
-  label: string; schema: InputSchema; value: unknown; required?: boolean; onChange: (value: unknown) => void;
+function SchemaField({ label, schema, value, required = false, onChange, action }: {
+  label: string; schema: InputSchema; value: unknown; required?: boolean; onChange: (value: unknown) => void; action?: ReactNode;
 }) {
   const id = useId();
   const description = schema.description ? <p id={`${id}-description`} className="text-xs text-secondary">{schema.description}</p> : null;
@@ -47,6 +48,7 @@ function SchemaField({ label, schema, value, required = false, onChange }: {
     return (
       <fieldset className="flex min-w-0 flex-col gap-3 border-l border-white/15 pl-4">
         <legend className="mb-2 text-sm font-semibold">{label}</legend>
+        {action}
         {description}
         {Object.entries(schema.properties ?? {}).map(([key, field]) => (
           <SchemaField key={key} label={key} schema={field} value={object[key]} required={schema.required?.includes(key)}
@@ -61,22 +63,14 @@ function SchemaField({ label, schema, value, required = false, onChange }: {
     return (
       <fieldset className="flex min-w-0 flex-col gap-3 border-l border-white/15 pl-4">
         <legend className="mb-2 text-sm font-semibold">{label}{required ? ' *' : ''}</legend>
+        {action}
         {description}
-        {items.map((item, index) => (
-          <div key={index} className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <SchemaField label={`${label} ${index + 1}`} schema={schema.items ?? {}} value={item} required
-                onChange={(next) => onChange(items.map((current, i) => i === index ? next : current))} />
-            </div>
-            <button type="button" aria-label={`Delete ${label} ${index + 1}`}
-              className="mt-6 rounded-md px-2 py-2 text-xs text-red-400 hover:bg-white/5 disabled:opacity-40"
-              disabled={items.length <= (schema.minItems ?? 0)}
-              onClick={() => onChange(items.filter((_, i) => i !== index))}>Delete</button>
-          </div>
-        ))}
-        <button type="button" className="self-start rounded-lg border border-white/20 px-3 py-1.5 text-xs hover:bg-white/5 disabled:opacity-40"
-          disabled={schema.maxItems !== undefined && items.length >= schema.maxItems}
-          onClick={() => onChange([...items, getInitialValue(schema.items ?? {})])}>+ Add {label}</button>
+        <Repeatable items={items} onChange={onChange} createItem={() => getInitialValue(schema.items ?? {})}
+          minItems={schema.minItems} maxItems={schema.maxItems} addLabel={`+ Add ${label}`} itemLabel={label}>
+          {(item, updateItem, index, deleteButton) => (
+            <SchemaField label={`${label} ${index + 1}`} schema={schema.items ?? {}} value={item} required onChange={updateItem} action={deleteButton} />
+          )}
+        </Repeatable>
       </fieldset>
     );
   }
@@ -97,6 +91,7 @@ function SchemaField({ label, schema, value, required = false, onChange }: {
       ) : schema.type === 'string' ? (
         <OperationInput id={id} className={inputClass} aria-describedby={description ? `${id}-description` : undefined}
           multiline={schema.multiline}
+          action={action}
           value={typeof value === 'string' ? value : ''} required={required} minLength={schema.minLength} maxLength={schema.maxLength}
           onValueChange={onChange} />
       ) : (
@@ -108,6 +103,7 @@ function SchemaField({ label, schema, value, required = false, onChange }: {
           onChange={(event) => onChange(event.target.type === 'number' && event.target.value !== ''
             ? event.target.valueAsNumber : event.target.value)} />
       )}
+      {schema.type !== 'string' || schema.enum ? action : null}
     </div>
   );
 }
