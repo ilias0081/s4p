@@ -59,7 +59,7 @@ export default class MicrosoftGraph extends Integration<MicrosoftCredentials> {
       if (error.success && ['invalid_grant', 'interaction_required', 'consent_required', 'login_required'].includes(error.data.error)) {
         throw codedError('OAUTH_REAUTH_REQUIRED', 'Reconnect Microsoft to authorize access again.');
       }
-      throw codedError('UI_ERROR', `Unable to refresh Microsoft access (Microsoft returned ${response.status}).`);
+      throw codedError('OAUTH_TOKEN_REFRESH_FAILED', `Microsoft token refresh returned ${response.status}.`);
     }
     return this.parseTokenResponse(body);
   }
@@ -67,6 +67,7 @@ export default class MicrosoftGraph extends Integration<MicrosoftCredentials> {
   protected async getAccount(accessToken: string): Promise<IntegrationAccount> {
     const response = await fetch('https://graph.microsoft.com/v1.0/me?$select=id,mail,userPrincipalName', {
       headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!response.ok) {

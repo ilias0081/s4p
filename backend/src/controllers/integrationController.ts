@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 
-import { codedError, getUserId, handleCommonError, validateBody } from '../lib/utils.js';
+import { codedError, getUserId, handleError, validateBody } from '../lib/utils.js';
 import {
   completeIntegrationOAuth,
   getIntegrationAuthUrl,
@@ -15,7 +15,7 @@ export async function getIntegrations(request: Request, response: Response) {
     const integrations = await getIntegrationsForUser(userId);
     return response.status(200).json({ integrations });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to fetch integrations.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to fetch integrations.' });
   }
 }
 
@@ -33,7 +33,7 @@ export async function getAuthUrl(request: Request, response: Response) {
     request.session.pendingOAuth = { integrationId, redirectUri, codeVerifier };
     return response.status(200).json({ url });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to build authorization URL.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to build authorization URL.' });
   }
 }
 
@@ -54,7 +54,7 @@ export async function completeOAuth(request: Request, response: Response) {
     await completeIntegrationOAuth(userId, pending, code);
     return response.status(204).send();
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to complete the connection.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to complete the connection.' });
   }
 }
 
@@ -73,6 +73,6 @@ export async function deleteIntegration(request: Request, response: Response) {
 
     return response.status(204).send();
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to remove the integration.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to remove the integration.' });
   }
 }

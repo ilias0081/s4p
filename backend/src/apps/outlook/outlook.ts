@@ -55,16 +55,24 @@ export default class Outlook extends App {
     url.searchParams.set('$top', '1');
     url.searchParams.set('$orderby', 'receivedDateTime desc');
 
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!response.ok) {
-      throw codedError('UI_ERROR', `Unable to read your Outlook inbox (Microsoft Graph returned ${response.status}).`);
-    }
+    try {
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) {
+        throw codedError('EXTERNAL_SERVICE_FAILED', `Microsoft Graph inbox request returned ${response.status}.`);
+      }
 
-    const inbox = inboxResponseSchema.parse(await response.json());
-    return inbox.value[0] ?? null;
+      const inbox = inboxResponseSchema.parse(await response.json());
+      return inbox.value[0] ?? null;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw codedError('EXTERNAL_SERVICE_TIMEOUT', 'Microsoft Graph inbox request timed out after 15 seconds.');
+      }
+      if (error instanceof Error && !('code' in error)) throw codedError('EXTERNAL_SERVICE_FAILED', error.message);
+      throw error;
+    }
   }
 
   protected async sendEmail(_input: SendEmailInput): Promise<never> {

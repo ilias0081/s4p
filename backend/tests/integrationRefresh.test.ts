@@ -66,14 +66,14 @@ test('refresh expired credentials, persist rotation, and handle failures without
 
     await expire();
     fetchMock.mock.mockImplementation(async () => new Response(null, { status: 503 }));
-    await assert.rejects(integration.getAccessToken(userId), { code: 'UI_ERROR' });
+    await assert.rejects(integration.getAccessToken(userId), { code: 'OAUTH_TOKEN_REFRESH_FAILED' });
     saved = await savedAccount();
     assert.equal(saved.access_token, 'second-access');
     assert.equal(saved.needs_reauth, false);
 
     // A malformed success response must not overwrite the saved connection.
     fetchMock.mock.mockImplementation(async () => Response.json({ access_token: '', expires_in: 'invalid' }));
-    await assert.rejects(integration.getAccessToken(userId), { code: 'UI_ERROR' });
+    await assert.rejects(integration.getAccessToken(userId), { code: 'OAUTH_TOKEN_RESPONSE_INVALID' });
     assert.equal((await savedAccount()).refresh_token, 'new-refresh');
 
     fetchMock.mock.mockImplementation(async () => Response.json({ error: 'invalid_grant' }, { status: 400 }));

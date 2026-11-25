@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 
-import { getUserId, handleCommonError, validateBody } from '../lib/utils.js';
+import { getUserId, handleError, validateBody } from '../lib/utils.js';
 import {
   getApps as fetchApps, getWorkflowOperations as fetchWorkflowOperations,
   getAppMethods as fetchAppMethods, createWorkflowOperation as saveWorkflowOperation,
@@ -21,7 +21,7 @@ export async function updateWorkflowOperation(request: Request, response: Respon
     }));
     return response.json({ operation: await editWorkflowOperation(userId, workflowId, operationId, input) });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to update operation.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to update operation.' });
   }
 }
 
@@ -32,7 +32,7 @@ export async function getReferenceOperations(request: Request, response: Respons
     const { sourceId } = validateBody(request.query, z.object({ sourceId: z.uuid() }));
     return response.json({ operations: await fetchReferenceOperations(userId, workflowId, sourceId) });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to load preceding operations.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to load preceding operations.' });
   }
 }
 
@@ -47,7 +47,7 @@ export async function executeOperation(request: Request, response: Response) {
     response.setHeader('Cache-Control', 'no-store');
     return response.json(result);
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to preview operation.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to preview operation.' });
   }
 }
 
@@ -57,7 +57,7 @@ export async function getAppMethodInputSchema(request: Request, response: Respon
     const { appId, method } = validateBody(request.params, z.object({ appId: z.uuid(), method: z.string().min(1) }));
     return response.json({ schema: await fetchAppMethodInputSchema(appId, method) });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to load method configuration.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to load method configuration.' });
   }
 }
 
@@ -68,7 +68,7 @@ export async function deleteWorkflowOperation(request: Request, response: Respon
     await removeWorkflowOperation(userId, workflowId, operationId);
     return response.status(204).send();
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to delete operation.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to delete operation.' });
   }
 }
 
@@ -79,7 +79,7 @@ export async function getAppMethods(request: Request, response: Response) {
     const { type } = validateBody(request.query, z.object({ type: z.enum(['trigger', 'action_in_app']) }));
     return response.json({ methods: await fetchAppMethods(appId, type) });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to load app methods.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to load app methods.' });
   }
 }
 
@@ -97,7 +97,7 @@ export async function createWorkflowOperation(request: Request, response: Respon
     const operation = await saveWorkflowOperation(userId, workflowId, input);
     return response.status(201).json({ operation });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to save operation.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to save operation.' });
   }
 }
 
@@ -107,7 +107,7 @@ export async function getApps(request: Request, response: Response) {
     const apps = await fetchApps();
     return response.json({ apps });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to load apps.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to load apps.' });
   }
 }
 
@@ -121,6 +121,6 @@ export async function getWorkflowOperations(request: Request, response: Response
     
     return response.json({ operations });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to load operations.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to load operations.' });
   }
 }

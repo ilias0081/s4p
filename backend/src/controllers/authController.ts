@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db/database.js';
 
-import { getUserId, handleCommonError, notAuthenticatedError, validateBody } from '../lib/utils.js';
+import { getUserId, handleError, notAuthenticatedError, validateBody } from '../lib/utils.js';
 import { authenticateUser, createUser, findUserByEmail } from '../services/authService.js';
 
 export async function registerUser(request: Request, response: Response) {
@@ -31,7 +31,7 @@ export async function registerUser(request: Request, response: Response) {
       user,
     });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to create user.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to create user.' });
   }
 }
 
@@ -49,7 +49,7 @@ export async function loginUser(request: Request, response: Response) {
 
     request.session.regenerate((sessionError) => {
       if (sessionError) {
-        return handleCommonError(sessionError, response) ?? response.status(500).json({ error: 'Unable to sign in.' });
+        return handleError(sessionError, response) ?? response.status(500).json({ error: 'Unable to sign in.' });
       }
 
       request.session.userId = user.id.toString();
@@ -61,7 +61,7 @@ export async function loginUser(request: Request, response: Response) {
       });
     });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to sign in.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to sign in.' });
   }
 }
 
@@ -83,7 +83,7 @@ export async function getUserData(request: Request, response: Response) {
 
     return response.status(200).json({ user: user ?? null });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to get user data.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to get user data.' });
   }
 }
 
@@ -101,14 +101,14 @@ export async function getCurrentUser(request: Request, response: Response) {
 
     return response.status(200).json({ user: safeUser });
   } catch (error) {
-    return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to get current user.' });
+    return handleError(error, response) ?? response.status(500).json({ error: 'Unable to get current user.' });
   }
 }
 
 export function logoutUser(request: Request, response: Response) {
   request.session.destroy((error) => {
     if (error) {
-      return handleCommonError(error, response) ?? response.status(500).json({ error: 'Unable to sign out.' });
+      return handleError(error, response) ?? response.status(500).json({ error: 'Unable to sign out.' });
     }
 
     response.clearCookie('connect.sid');

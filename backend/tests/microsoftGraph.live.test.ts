@@ -79,16 +79,27 @@ test('trace Microsoft Graph authentication and inbox access', {
       'me?$select=userType,userPrincipalName',
       'me/mailFolders/inbox?$select=id',
       'me/mailFolders/inbox/messages?$top=1&$orderby=receivedDateTime%20desc&$select=id',
+      'me/mailFolders/inbox/messages?$top=1&$orderby=receivedDateTime%20desc',
     ]) {
-      const response = await fetch(`https://graph.microsoft.com/v1.0/${endpoint}`, {
+      const startedAt = performance.now();
+      let response: Response;
+      try {
+      response = await fetch(`https://graph.microsoft.com/v1.0/${endpoint}`, {
         headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(15_000),
       });
+      } catch (error) {
+        results.push({ endpoint, status: 0 });
+        report('Graph request failed', { endpoint, elapsedMs: Math.round(performance.now() - startedAt),
+          error: error instanceof Error ? error.name : 'UnknownError' });
+        continue;
+      }
       const body = await response.json().catch(() => null) as {
         userType?: string; userPrincipalName?: string; value?: unknown[];
         error?: { code?: string; message?: string };
       } | null;
       results.push({ endpoint, status: response.status });
       report('Graph request', { endpoint, status: response.status, statusText: response.statusText,
+        elapsedMs: Math.round(performance.now() - startedAt),
         requestId: response.headers.get('request-id'), serverDate: response.headers.get('date'),
         challenge: redact(response.headers.get('www-authenticate')),
         errorCode: redact(body?.error?.code), errorMessage: redact(body?.error?.message),

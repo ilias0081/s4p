@@ -13,6 +13,7 @@ import { IntegrationOAuthCallback } from './pages/integration_oauth_callback/Int
 import { AuthPage } from './pages/login/login';
 import { getUserData } from './pages/login/auth';
 import { WorkflowEditor } from './pages/workflow/WorkflowEditor';
+import { ApiErrorDialog } from './lib/components/ApiErrorDialog/ApiErrorDialog';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,6 +37,7 @@ void api.get('csrf-token')
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
+      <ApiErrorDialog />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<App />} />

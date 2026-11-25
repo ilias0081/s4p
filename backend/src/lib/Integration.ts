@@ -97,6 +97,9 @@ export abstract class Integration<
       try {
         tokens = await this.requestTokenRefresh(account.refresh_token);
       } catch (error) {
+        if (error instanceof Error && !('code' in error && typeof error.code === 'string')) {
+          throw codedError('OAUTH_TOKEN_REFRESH_FAILED', `Token refresh failed: ${error.message}`);
+        }
         if (!(error instanceof Error) || !('code' in error) || error.code !== 'OAUTH_REAUTH_REQUIRED') throw error;
         await trx.updateTable('s4p.user_integrations').set({ needs_reauth: true }).where('id', '=', account.id).execute();
         return null;
@@ -182,6 +185,7 @@ export abstract class Integration<
         redirect_uri: redirectUri,
         ...this.getCodeExchangeParams(code, codeVerifier),
       }),
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!response.ok) {
@@ -196,7 +200,7 @@ export abstract class Integration<
     const parsed = tokenResponseSchema.safeParse(body);
 
     if (!parsed.success) {
-      throw codedError('UI_ERROR', 'The provider returned an unexpected token response.');
+      throw codedError('OAUTH_TOKEN_RESPONSE_INVALID', 'The provider returned an unexpected token response.');
     }
 
     const { access_token, refresh_token, expires_in } = parsed.data;
@@ -210,8 +214,27 @@ export abstract class Integration<
   }
 
   async completeOAuth(code: string, redirectUri: string, codeVerifier?: string) {
-    const tokens = await this.exchangeCode(code, redirectUri, codeVerifier);
-    const account = await this.getAccount(tokens.accessToken);
+    let tokens: OAuthTokens;
+    try {
+      tokens = await this.exchangeCode(code, redirectUri, codeVerifier);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw codedError('OAUTH_TOKEN_EXCHANGE_FAILED', 'Token exchange timed out after 15 seconds.');
+      }
+      if (error instanceof Error && !('code' in error)) throw codedError('OAUTH_TOKEN_EXCHANGE_FAILED', error.message);
+      throw error;
+    }
+
+    let account: IntegrationAccount;
+    try {
+      account = await this.getAccount(tokens.accessToken);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw codedError('OAUTH_ACCOUNT_LOOKUP_FAILED', 'Account profile request timed out after 15 seconds.');
+      }
+      if (error instanceof Error && !('code' in error)) throw codedError('OAUTH_ACCOUNT_LOOKUP_FAILED', error.message);
+      throw error;
+    }
 
     return { tokens, account };
   }

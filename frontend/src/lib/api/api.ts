@@ -1,4 +1,5 @@
 import ky from 'ky';
+import { showUiError } from './uiErrors';
 
 function getCsrfToken(): string | undefined {
   const match = document.cookie.match(/(?:^|; )csrfToken=([^;]*)/);
@@ -24,13 +25,16 @@ const api = ky.create({
     ],
     afterResponse: [
       async ({ response }) => {
-        if (response.status !== 401) {
-          return;
+        if (response.ok) return;
+
+        const body = (await response.clone().json().catch(() => undefined)) as { code?: string; error?: string } | undefined;
+
+        // Server failures contain translated public messages; UI_ERROR is already user-facing.
+        if ((body?.code === 'UI_ERROR' || response.status >= 500) && typeof body?.error === 'string') {
+          showUiError(body.error);
         }
 
-        const body = (await response.clone().json().catch(() => undefined)) as { code?: string } | undefined;
-
-        if (body?.code === 'NOT_AUTHENTICATED' && window.location.hostname !== 'localhost') {
+        if (response.status === 401 && body?.code === 'NOT_AUTHENTICATED' && window.location.hostname !== 'localhost') {
           window.location.replace('/auth');
         }
       },

@@ -33,6 +33,11 @@ test('inbox trigger fetches one newest email for the executing user', async (t) 
 
   fetchMock.mock.mockImplementation(async () => new Response(null, { status: 401 }));
   await assert.rejects(outlook.executeMethod('new_email_in_inbox', {}), {
-    code: 'UI_ERROR', message: 'Unable to read your Outlook inbox (Microsoft Graph returned 401).',
+    code: 'EXTERNAL_SERVICE_FAILED', message: 'Microsoft Graph inbox request returned 401.',
+  });
+
+  fetchMock.mock.mockImplementation(async () => { throw new DOMException('Timed out', 'TimeoutError'); });
+  await assert.rejects(outlook.executeMethod('new_email_in_inbox', {}), {
+    code: 'EXTERNAL_SERVICE_TIMEOUT', message: 'Microsoft Graph inbox request timed out after 15 seconds.',
   });
 });

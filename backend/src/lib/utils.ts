@@ -32,7 +32,7 @@ export function validateBody<TSchema extends z.ZodType>(body: unknown, schema: T
   return result.data;
 }
 
-export function handleCommonError(error: unknown, response: Response): Response | undefined {
+export function handleError(error: unknown, response: Response): Response | undefined {
   if (error instanceof z.ZodError) {
     return response.status(400).json({ error: 'Invalid request.', issues: error.issues });
   }
@@ -45,7 +45,7 @@ export function handleCommonError(error: unknown, response: Response): Response 
   const typedError = error as { code?: string; message?: string; issues?: z.ZodIssue[] };
 
   if (typedError.code === 'UI_ERROR') {
-    return response.status(400).json({ error: typedError.message });
+    return response.status(400).json({ code: 'UI_ERROR', error: typedError.message });
   }
 
   if (typedError.code === 'NOT_AUTHENTICATED') {
@@ -64,8 +64,11 @@ export function handleCommonError(error: unknown, response: Response): Response 
     return response.status(400).json({ error: 'No connection is in progress. Start again from the integrations page.' });
   }
 
-  if (typedError.code === 'OAUTH_TOKEN_EXCHANGE_FAILED') {
-    return response.status(400).json({ error: 'The provider rejected the authorization code. Please try connecting again.' });
+  if (['OAUTH_TOKEN_EXCHANGE_FAILED', 'OAUTH_ACCOUNT_LOOKUP_FAILED', 'OAUTH_TOKEN_REFRESH_FAILED', 'OAUTH_TOKEN_RESPONSE_INVALID',
+    'EXTERNAL_SERVICE_FAILED', 'EXTERNAL_SERVICE_TIMEOUT'].includes(typedError.code ?? '')) {
+    console.error(`[${typedError.code}] ${typedError.message}`);
+    return response.status(typedError.code === 'EXTERNAL_SERVICE_TIMEOUT' ? 504 : 502)
+      .json({ code: typedError.code, error: 'External service failed. Please try again later.' });
   }
 
   if (typedError.code === 'SCHEMA_INVALID') {

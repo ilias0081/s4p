@@ -45,7 +45,12 @@ export const OAUTH_CHANNEL = 'integration_oauth';
 export type OAuthMessage = { code: string } | { error: string };
 
 export async function completeOAuth(code: string): Promise<void> {
-  await api.post('integrations/oauth-callback', { json: { code } });
+  await api.post('integrations/oauth-callback', {
+    json: { code },
+    // Token exchange and profile lookup can each take up to 15 seconds.
+    timeout: 35_000,
+    retry: 0, // Authorization codes are single use.
+  });
 }
 
 export function useCompleteIntegrationOAuth() {

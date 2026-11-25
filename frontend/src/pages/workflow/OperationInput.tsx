@@ -70,6 +70,9 @@ export function OperationInput({ value, onValueChange, multiline = false, action
   const preview = useMutation({
     mutationFn: (operationId: string) => api.post(`workflows/${context!.workflowId}/operations/${operationId}/execute`, {
       json: { sourceId: context!.sourceId },
+      // Allow both token refresh and the inbox request to reach their 15s limits.
+      timeout: 35_000,
+      retry: 0,
     }).json<{ output: unknown; expiresAt: number }>(),
   });
 
