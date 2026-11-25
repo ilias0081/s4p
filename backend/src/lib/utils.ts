@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Request, Response } from 'express';
+import { logger } from './logger.js';
 
 export function notAuthenticatedError() {
   return Object.assign(new Error('Not authenticated.'), { code: 'NOT_AUTHENTICATED' });
@@ -33,12 +34,13 @@ export function validateBody<TSchema extends z.ZodType>(body: unknown, schema: T
 }
 
 export function handleError(error: unknown, response: Response): Response | undefined {
+  logger.error(error instanceof Error ? error : { message: String(error) });
+
   if (error instanceof z.ZodError) {
     return response.status(400).json({ error: 'Invalid request.', issues: error.issues });
   }
 
   if (!error || typeof error !== 'object') {
-    console.error('Unhandled controller error:', error);
     return undefined;
   }
 
@@ -66,7 +68,6 @@ export function handleError(error: unknown, response: Response): Response | unde
 
   if (['OAUTH_TOKEN_EXCHANGE_FAILED', 'OAUTH_ACCOUNT_LOOKUP_FAILED', 'OAUTH_TOKEN_REFRESH_FAILED', 'OAUTH_TOKEN_RESPONSE_INVALID',
     'EXTERNAL_SERVICE_FAILED', 'EXTERNAL_SERVICE_TIMEOUT'].includes(typedError.code ?? '')) {
-    console.error(`[${typedError.code}] ${typedError.message}`);
     return response.status(typedError.code === 'EXTERNAL_SERVICE_TIMEOUT' ? 504 : 502)
       .json({ code: typedError.code, error: 'External service failed. Please try again later.' });
   }
@@ -87,6 +88,5 @@ export function handleError(error: unknown, response: Response): Response | unde
     return response.status(400).json({ error: 'Invalid identifier.' });
   }
 
-  console.error('Unhandled controller error:', error);
   return undefined;
 }

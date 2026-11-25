@@ -1,6 +1,17 @@
 import { sql } from 'kysely';
 
 import { db } from '../db/database.js';
+import { codedError } from '../lib/utils.js';
+
+async function throwHealthTestError(): Promise<never> {
+  // Include an asynchronous boundary so the diagnostic also checks async stacks.
+  await Promise.resolve();
+  throw codedError('HEALTH_TEST_ERROR', 'Intentional health endpoint stack trace test.');
+}
+
+export async function testHealthErrorStack(): Promise<never> {
+  return await throwHealthTestError();
+}
 
 type HealthStatus = 'ok' | 'degraded';
 type DatabaseStatus = 'ok' | 'error';

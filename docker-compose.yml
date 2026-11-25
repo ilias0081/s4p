@@ -19,6 +19,8 @@ services:
       dockerfile: Dockerfile
     image: s4p-backend:local
     pull_policy: build
+    volumes:
+      - ./logs:/app/logs
     environment:
       NODE_ENV: production
       PORT: 3001

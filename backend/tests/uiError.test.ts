@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Response } from 'express';
 import { codedError, handleError } from '../src/lib/utils.js';
+import { logger } from '../src/lib/logger.js';
 
 test('UI_ERROR returns its exact message and a code the frontend can recognize', () => {
   const message = 'Reconnect Microsoft before continuing.\nYour existing configuration is saved.';
@@ -18,7 +19,7 @@ test('UI_ERROR returns its exact message and a code the frontend can recognize',
 });
 
 test('external failures preserve their codes but expose only a translated message', (t) => {
-  const log = t.mock.method(console, 'error', () => {});
+  const log = t.mock.method(logger, 'error', () => logger);
   for (const code of ['OAUTH_TOKEN_EXCHANGE_FAILED', 'OAUTH_ACCOUNT_LOOKUP_FAILED', 'OAUTH_TOKEN_REFRESH_FAILED',
     'OAUTH_TOKEN_RESPONSE_INVALID', 'EXTERNAL_SERVICE_FAILED', 'EXTERNAL_SERVICE_TIMEOUT']) {
     const internalMessage = 'Microsoft issued tokens, but /me failed with diagnostic details.';

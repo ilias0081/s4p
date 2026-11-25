@@ -13,6 +13,7 @@
     "express-session": "^1.19.0",
     "kysely": "^0.29.4",
     "pg": "^8.12.0",
+    "winston": "^3.19.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
