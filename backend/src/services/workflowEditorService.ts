@@ -1,9 +1,9 @@
 import { db } from '../db/database.js';
 import type { JsonObject } from '../db/types.js';
-import type { App, AppMethodType } from '../lib/App.js';
-import type { Integration } from '../lib/Integration.js';
+import type { AppMethodType } from '../lib/App.js';
+import { loadApp } from './appService.js';
 import { codedError } from '../lib/utils.js';
-import { loadIntegration } from './integrationService.js';
+import { ensureTriggerSubscription } from './subscriptionService.js';
 import { referencedOperationIds } from '../lib/operationReferences.js';
 
 export type OperationOutputCache = Record<string, { expiresAt: number; fingerprint: string; output: unknown }>;
@@ -43,9 +43,11 @@ export async function getReferenceOperations(userId: string, workflowId: string,
 export async function executeOperation(userId: string, workflowId: string, operationId: string, sourceId: string, cache: OperationOutputCache) {
   const operations = await getPrecedingOperations(userId, workflowId, sourceId);
   const operation = operations.find((item) => item.id === operationId);
+
   if (!operation?.app_id || !operation.app_method) {
     throw codedError('UI_ERROR', 'Choose an operation before the operation being configured.');
   }
+  
   const app = await loadApp(operation.app_id);
   const method = app.getAppMethods().find((item) => item.method === operation.app_method);
   if (!method?.readonly) throw codedError('UI_ERROR', 'Only readonly operations can be previewed.');
@@ -67,22 +69,6 @@ export async function executeOperation(userId: string, workflowId: string, opera
   const entry = { output: JSON.parse(JSON.stringify(output ?? null)) as unknown, expiresAt: Date.now() + 5 * 60 * 1000, fingerprint };
   cache[key] = entry;
   return { output: entry.output, expiresAt: entry.expiresAt };
-}
-
-async function loadApp(appId: string): Promise<App> {
-  const record = await db.selectFrom('s4p.apps').select(['name', 'integration_id'])
-    .where('id', '=', appId).executeTakeFirst();
-  if (!record) throw codedError('UI_ERROR', 'App not found.');
-  if (!/^[a-z0-9_]+$/.test(record.name)) throw codedError('UI_ERROR', 'This app is not supported yet.');
-
-  let module: { default: new (integration: Integration) => App };
-  try {
-    const extension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
-    module = await import(`../apps/${record.name}/${record.name}.${extension}`);
-  } catch {
-    throw codedError('UI_ERROR', 'This app is not supported yet.');
-  }
-  return new module.default(await loadIntegration(record.integration_id));
 }
 
 export async function getAppMethods(appId: string, type: AppMethodType) {
@@ -125,6 +111,8 @@ export async function createWorkflowOperation(userId: string, workflowId: string
       if (input.type !== 'trigger' || position) {
         throw codedError('UI_ERROR', 'Start this workflow with a trigger.');
       }
+    } else if (input.type === 'trigger') {
+      throw codedError('UI_ERROR', 'Only the first operation can be a trigger.');
     } else if (!position) {
       throw codedError('UI_ERROR', 'Choose where to add this operation.');
     }
@@ -163,13 +151,11 @@ export async function createWorkflowOperation(userId: string, workflowId: string
           .where('id', '=', position.targetId).where('workflow_id', '=', workflowId).execute();
       }
     }
+    if (input.type === 'trigger') {
+      await ensureTriggerSubscription(trx, app, userId, input.appId, input.method);
+    }
     return operation;
   });
-}
-
-export async function getApps() {
-  return db.selectFrom('s4p.apps')
-    .select(['id', 'name', 'ui_name']).orderBy('ui_name').execute();
 }
 
 export async function updateWorkflowOperation(userId: string, workflowId: string, operationId: string, input: Omit<CreateOperationInput, 'position'>) {
@@ -200,6 +186,9 @@ export async function updateWorkflowOperation(userId: string, workflowId: string
       throw codedError('UI_ERROR', 'References must point to preceding operations in this workflow.');
     }
 
+    if (input.type === 'trigger') {
+      await ensureTriggerSubscription(trx, app, userId, input.appId, input.method);
+    }
     return trx.updateTable('s4p.operations').set({ type: input.type, app_id: input.appId,
       app_method: input.method, configuration: configuration as JsonObject })
       .where('workflow_id', '=', workflowId).where('id', '=', operationId).returningAll().executeTakeFirstOrThrow();

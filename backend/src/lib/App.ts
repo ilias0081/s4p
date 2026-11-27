@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { Integration } from './Integration.js';
+import type { JsonObject } from '../db/types.js';
 import { codedError } from './utils.js';
 import { configurationSchema } from './operationReferences.js';
 
@@ -23,6 +24,13 @@ export interface AppMethod {
 export type AppMethodDefinition = AppMethod & {
   inputSchema: z.ZodObject;
   invoke: (input: unknown) => Promise<unknown>;
+  subscribe?: (userId: string) => Promise<TriggerSubscription>;
+};
+
+export type TriggerSubscription = {
+  providerSubscriptionId: string;
+  expiry: Date;
+  providerData: JsonObject;
 };
 
 // Bind a typed handler to its schema once; callers always pass through validation.
@@ -30,6 +38,7 @@ export function defineAppMethod<TSchema extends z.ZodObject, TResult>(
   definition: AppMethod & {
     inputSchema: TSchema;
     handler: (input: z.output<TSchema>) => Promise<TResult>;
+    subscribe?: AppMethodDefinition['subscribe'];
   },
 ): AppMethodDefinition {
   const { handler, ...metadata } = definition;
@@ -76,6 +85,12 @@ export abstract class App {
       throw codedError('APP_EXECUTION_CONTEXT_MISSING', 'Set the app execution context before executing a method.');
     }
     return this.getMethod(method).invoke(input);
+  }
+
+  createSubscription(method: string, userId: string): Promise<TriggerSubscription> {
+    const subscribe = this.getMethod(method).subscribe;
+    if (!subscribe) throw codedError('APP_SUBSCRIPTION_UNSUPPORTED', 'This trigger does not support subscriptions.');
+    return subscribe(userId);
   }
 
   private getMethod(method: string): AppMethodDefinition {

@@ -24,6 +24,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      WEBHOOK_BASE_URL: ${WEBHOOK_BASE_URL:-}
       SESSION_SECRET: ${SESSION_SECRET}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: ${POSTGRES_PORT}

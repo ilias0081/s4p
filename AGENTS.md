@@ -17,6 +17,7 @@ These instructions apply throughout this repository. Follow the user's current r
 - Backend source imports use `.js` extensions for Node ESM. Keep filename casing exact; Docker runs Linux.
 - Database tables use the `s4p` schema. Validate UUID request identifiers with `z.uuid()`.
 - The canonical generated database types are `backend/src/db/types.ts`. Do not edit generated types manually or create another copy under `backend/db/src`.
+- To inspect the database schema, read `backend/src/db/types.ts`; it lists the tables, columns, and their types.
 - Keep database migrations in `backend/db/migrations` and database utilities in `backend/db/scripts`. `generate_types.bat` generates the canonical types and resolves paths relative to the script.
 
 ## Errors and user messages

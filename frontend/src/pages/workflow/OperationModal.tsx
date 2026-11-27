@@ -25,8 +25,7 @@ export function OperationModal({ workflowId, position, operation, triggerOnly = 
   const [selectedAppId, setSelectedApp] = useState<string | null>(operation ? operation.appId : null);
   const [selectedMethod, setSelectedMethod] = useState<string | null>(operation ? operation.method : null);
   const appsQuery = useApps();
-  const selectedApp = appsQuery.data?.apps.find((app) => app.id === selectedAppId)
-    ?? (selectedAppId ? { id: selectedAppId, ui_name: 'Loading app...' } : null);
+  const selectedApp = appsQuery.data?.apps.find((app) => app.id === selectedAppId);
   const [error, setError] = useState('');
   const appType = selectedType === 'trigger' || selectedType === 'action_in_app' ? selectedType : null;
   const methodsQuery = useAppMethods(selectedApp?.id, appType);

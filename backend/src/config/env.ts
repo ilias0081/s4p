@@ -31,6 +31,7 @@ function readNumber(name: string, fallback?: number) {
 const nodeEnv = process.env.NODE_ENV ?? 'production';
 
 export const env = {
+  webhookBaseUrl: process.env.WEBHOOK_BASE_URL,
   nodeEnv,
   port: readNumber('PORT', 3001),
   sessionSecret: readString(

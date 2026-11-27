@@ -64,6 +64,18 @@ export interface S4pUserIntegrations {
   user_id: string;
 }
 
+export interface S4pUserIntegrationSubscriptions {
+  app_id: string;
+  expiry: Timestamp;
+  id: Generated<string>;
+  needs_reactivation: Generated<boolean>;
+  provider_data: Json | null;
+  provider_subscription_id: string;
+  scope: string | null;
+  trigger_method: string;
+  user_integration_id: string;
+}
+
 export interface S4pUsers {
   email: string;
   first_name: string;
@@ -82,6 +94,7 @@ export interface DB {
   "s4p.apps": S4pApps;
   "s4p.integrations": S4pIntegrations;
   "s4p.operations": S4pOperations;
+  "s4p.user_integration_subscriptions": S4pUserIntegrationSubscriptions;
   "s4p.user_integrations": S4pUserIntegrations;
   "s4p.users": S4pUsers;
   "s4p.workflows": S4pWorkflows;

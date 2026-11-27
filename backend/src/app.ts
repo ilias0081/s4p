@@ -8,6 +8,7 @@ import { requireAuth } from './middleware/requireAuth.js';
 import { authRouter } from './routes/auth.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { healthRouter } from './routes/health.js';
+import { webhookRouter } from './routes/webhooks.js';
 import { workflowEditorRouter } from './routes/workflows.js';
 
 export function createApp() {
@@ -15,6 +16,7 @@ export function createApp() {
 
   app.disable('x-powered-by');
   app.use(express.json());
+  app.use('/api/webhooks', webhookRouter);
   app.use(
     session({
       secret: env.sessionSecret,
@@ -28,10 +30,10 @@ export function createApp() {
       }
     })
   );
-
+  
   app.get('/api/csrf-token', issueCsrfToken);
   app.use('/api', verifyCsrfToken);
-
+  
   app.use('/api', healthRouter);
   app.use('/api', authRouter);
   app.use('/api', requireAuth, dashboardRouter);

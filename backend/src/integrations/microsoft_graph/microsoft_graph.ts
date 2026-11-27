@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 
+import { env } from '../../config/env.js';
 import { Integration, type IntegrationAccount, type OAuthTokens } from '../../lib/Integration.js';
 import { codedError } from '../../lib/utils.js';
 
@@ -15,8 +17,79 @@ const meSchema = z.object({
   userPrincipalName: z.string().min(1),
 });
 
+const notificationSchema = z.object({
+  subscriptionId: z.uuid(),
+  clientState: z.string().length(64),
+  changeType: z.string(),
+  resourceData: z.object({ id: z.string().min(1) }),
+});
+
+export function parseNotifications(body: unknown) {
+  const batch = z.object({ value: z.array(z.unknown()) }).safeParse(body);
+  return batch.success ? batch.data.value.flatMap((item) => {
+    const result = notificationSchema.safeParse(item);
+    return result.success ? [result.data] : [];
+  }) : undefined;
+}
+
+export function matchesClientState(providerData: unknown, received: string) {
+  const result = z.object({ clientState: z.string().regex(/^[0-9a-f]{64}$/) }).safeParse(providerData);
+  return result.success && /^[0-9a-f]{64}$/.test(received) &&
+    timingSafeEqual(Buffer.from(result.data.clientState, 'hex'), Buffer.from(received, 'hex'));
+}
+
 export default class MicrosoftGraph extends Integration<MicrosoftCredentials> {
   readonly supportsPkce = true;
+
+  async createChangeSubscription(
+    userId: string,
+    options: { resource: string; changeType: string; expirationDateTime: string },
+    headers: Record<string, string> = {},
+  ) {
+    const notificationUrl = URL.parse(env.webhookBaseUrl ?? '');
+    if (notificationUrl?.protocol !== 'https:') {
+      throw codedError('WEBHOOK_CONFIGURATION_INVALID', 'WEBHOOK_BASE_URL must be a public HTTPS base URL.');
+    }
+    const clientState = randomBytes(32).toString('hex');
+    const accessToken = await this.getAccessToken(userId);
+    const subscription = await this.requestJson('subscriptions', accessToken, {
+      ...options,
+      notificationUrl: new URL('/api/webhooks/microsoft_graph', notificationUrl).href,
+      clientState,
+    }, headers);
+    const parsed = z.object({ id: z.uuid(), expirationDateTime: z.iso.datetime({ offset: true }) }).safeParse(subscription);
+    if (!parsed.success) throw codedError('EXTERNAL_SERVICE_FAILED', 'Microsoft Graph returned an invalid subscription.');
+    return {
+      providerSubscriptionId: parsed.data.id,
+      expiry: new Date(parsed.data.expirationDateTime),
+      providerData: { clientState },
+    };
+  }
+
+  async requestJson(path: string, accessToken: string, body?: object, headers: Record<string, string> = {}): Promise<unknown> {
+    try {
+      const response = await fetch(`https://graph.microsoft.com/v1.0/${path}`, {
+        method: body ? 'POST' : 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: body && JSON.stringify(body),
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) {
+        throw codedError('EXTERNAL_SERVICE_FAILED', `Microsoft Graph request returned ${response.status}.`);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw codedError('EXTERNAL_SERVICE_TIMEOUT', 'Microsoft Graph request timed out.');
+      }
+      if (error instanceof Error && 'code' in error) throw error;
+      throw codedError('EXTERNAL_SERVICE_FAILED', 'Microsoft Graph request failed.');
+    }
+  }
 
   protected readonly credentialsSchema: z.ZodType<MicrosoftCredentials> = z.object({
     clientId: z.string().min(1),
@@ -31,7 +104,7 @@ export default class MicrosoftGraph extends Integration<MicrosoftCredentials> {
   }
 
   protected getScopes(): string[] {
-    return ['openid', 'profile', 'email', 'offline_access', 'User.Read', 'Mail.ReadWrite', 'Files.ReadWrite'];
+    return ['openid', 'profile', 'email', 'offline_access', 'User.Read', 'Mail.ReadWrite', 'Mail.Send', 'Files.ReadWrite'];
   }
 
   protected getTokenEndpoint(): string {

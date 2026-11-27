@@ -2,8 +2,9 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 
 import { getUserId, handleError, validateBody } from '../lib/utils.js';
+import { getApps as fetchApps } from '../services/appService.js';
 import {
-  getApps as fetchApps, getWorkflowOperations as fetchWorkflowOperations,
+  getWorkflowOperations as fetchWorkflowOperations,
   getAppMethods as fetchAppMethods, createWorkflowOperation as saveWorkflowOperation,
   deleteWorkflowOperation as removeWorkflowOperation,
   getAppMethodInputSchema as fetchAppMethodInputSchema,

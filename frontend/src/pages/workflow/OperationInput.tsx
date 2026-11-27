@@ -59,6 +59,7 @@ export function OperationInput({ value, onValueChange, multiline = false, action
   const [error, setError] = useState('');
   const requestVersion = useRef(0);
   const open = anchor !== null;
+
   const operationsQuery = useQuery({
     queryKey: ['reference-operations', context?.workflowId, context?.sourceId],
     enabled: open && !!context?.sourceId,
@@ -67,6 +68,7 @@ export function OperationInput({ value, onValueChange, multiline = false, action
       searchParams: { sourceId: context!.sourceId! },
     }).json<{ operations: { id: string; ui_name: string }[] }>(),
   });
+
   const preview = useMutation({
     mutationFn: (operationId: string) => api.post(`workflows/${context!.workflowId}/operations/${operationId}/execute`, {
       json: { sourceId: context!.sourceId },
@@ -77,6 +79,7 @@ export function OperationInput({ value, onValueChange, multiline = false, action
   });
 
   const close = () => { setAnchor(null); requestVersion.current++; };
+  
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {
